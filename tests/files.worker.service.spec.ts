@@ -1,121 +1,133 @@
-import { jest } from '@jest/globals';
-import EventEmitter from 'node:events';
+/* eslint-disable unicorn/prefer-event-target */
+import {
+  describe,
+  expect,
+  it,
+  beforeEach,
+  vi,
+  afterEach,
+  Mocked,
+} from "vitest";
+import EventEmitter from "node:events";
 
-import { Subject } from 'rxjs';
-import { EVENTS } from '../src/constants/workers.constants';
-import { IListDirParams } from '../src/interfaces';
-import { SearchStatus } from '../src/models/search-state.model';
-import { WorkerMessage } from '../src/services/files/files.worker.service';
-import { LoggerService } from '../src/services/logger.service';
+import { EVENTS } from "@/constants/workers.constants.js";
+import { IListDirParams } from "@/interfaces/list-dir-params.interface.js";
+import { SearchStatus } from "@/models/search-state.model.js";
+import { WorkerMessage } from "@/services/files/files.worker.service.js";
+import { LoggerService } from "@/services/logger.service.js";
 
 const workerEmitter: EventEmitter = new EventEmitter();
 const port1Emitter: EventEmitter = new EventEmitter();
 const port2Emitter: EventEmitter = new EventEmitter();
-const workerPostMessageMock = jest.fn();
-const workerTerminateMock = jest
-  .fn()
-  .mockImplementation(() => new Promise(() => {}));
-const messageChannelPort1Mock = jest.fn();
-const messageChannelPort2Mock = jest.fn();
 
-jest.unstable_mockModule('os', () => ({
-  default: { cpus: jest.fn().mockReturnValue([0, 0]) },
+const mocks = vi.hoisted(() => ({
+  workerPostMessageMock: vi.fn(),
+  workerTerminateMock: vi.fn().mockImplementation(() => new Promise(() => {})),
+  messageChannelPort1Mock: vi.fn(),
+  messageChannelPort2Mock: vi.fn(),
 }));
 
-jest.unstable_mockModule('node:worker_threads', () => ({
-  Worker: jest.fn(() => ({
-    postMessage: workerPostMessageMock,
+vi.mock("node:os", () => ({
+  default: { cpus: vi.fn().mockReturnValue([0, 0]) },
+}));
+
+vi.mock("node:worker_threads", () => ({
+  Worker: vi.fn(() => ({
+    postMessage: mocks.workerPostMessageMock,
     on: (eventName: string, listener: (...args: any[]) => void) =>
       workerEmitter.on(eventName, listener),
-    terminate: workerTerminateMock,
-    removeAllListeners: jest.fn(),
+    terminate: mocks.workerTerminateMock,
+    removeAllListeners: vi.fn(),
   })),
 
-  MessageChannel: jest.fn(() => ({
+  MessageChannel: vi.fn(() => ({
     port1: {
-      postMessage: messageChannelPort1Mock,
+      postMessage: mocks.messageChannelPort1Mock,
       on: (eventName: string, listener: (...args: any[]) => void) =>
         port1Emitter.on(eventName, listener),
-      removeAllListeners: jest.fn(),
+      removeAllListeners: vi.fn(),
     },
     port2: {
-      postMessage: messageChannelPort2Mock,
+      postMessage: mocks.messageChannelPort2Mock,
       on: (eventName: string, listener: (...args: any[]) => void) =>
         port2Emitter.on(eventName, listener),
-      removeAllListeners: jest.fn(),
+      removeAllListeners: vi.fn(),
     },
   })),
 }));
 
 const logger = {
-  info: jest.fn(),
-} as unknown as jest.Mocked<LoggerService>;
+  info: vi.fn(),
+} as unknown as Mocked<LoggerService>;
 
-const FileWorkerServiceConstructor = //@ts-ignore
-  (await import('../src/services/files/files.worker.service.js'))
-    .FileWorkerService;
-class FileWorkerService extends FileWorkerServiceConstructor {}
+import { FileWorkerService } from "@/services/files/files.worker.service.js";
+import { signal, Signal } from "@preact/signals-core";
 
-describe('FileWorkerService', () => {
+describe("FileWorkerService", () => {
   let fileWorkerService: FileWorkerService;
   let searchStatus: SearchStatus;
   let params: IListDirParams;
 
   beforeEach(async () => {
-    const aa = new URL('http://127.0.0.1'); // Any valid URL. Is not used
-    jest.spyOn(global, 'URL').mockReturnValue(aa);
+    const aa = new URL("http://127.0.0.1"); // Any valid URL. Is not used
+    vi.spyOn(global, "URL").mockReturnValue(aa);
 
     searchStatus = new SearchStatus();
     fileWorkerService = new FileWorkerService(logger, searchStatus);
     params = {
-      path: '/path/to/directory',
-      target: 'node_modules',
+      path: "/path/to/directory",
+      target: "node_modules",
     };
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.clearAllMocks();
     workerEmitter.removeAllListeners();
     port1Emitter.removeAllListeners();
     port2Emitter.removeAllListeners();
   });
 
-  describe('startScan', () => {
-    let stream$: Subject<string>;
+  describe("startScan", () => {
+    let stream$: Signal<string> = signal("");
 
     beforeEach(() => {
-      stream$ = new Subject<string>();
+      stream$ = signal<string>("");
     });
 
     afterEach(() => {
-      jest.restoreAllMocks();
+      vi.clearAllMocks();
     });
 
     it('should emit "explore" and parameters to the worker', () => {
       fileWorkerService.startScan(stream$, params);
-      expect(messageChannelPort1Mock).toBeCalledWith({
+      expect(mocks.messageChannelPort1Mock).toBeCalledWith({
         type: EVENTS.explore,
         value: { path: params.path },
       });
     });
 
-    it('should emit result to the streams on "scanResult"', (done) => {
+    it('should emit result to the streams on "scanResult"', async () => {
       fileWorkerService.startScan(stream$, params);
-      const val1 = ['/sample/path1/node_modules'];
-      const val2 = ['/sample/path2/node_modules', '/sample/path3/otherDir'];
+      const val1 = ["/sample/path1/node_modules"];
+      const val2 = ["/sample/path2/node_modules", "/sample/path3/otherDir"];
 
-      const result: string[] = [];
-      stream$.subscribe((data) => {
-        result.push(data);
-        if (result.length === 3) {
-          expect(result[0]).toBe(val1[0]);
-          expect(result[1]).toBe(val2[0]);
-          expect(result[2]).toBe(val2[1]);
-          done();
-        }
+      const done = new Promise<string[]>((resolve) => {
+        const result: string[] = [];
+        stream$.subscribe((data) => {
+          result.push(data);
+          if (result.length === 3) {
+            /*
+            expect(result[0]).toBe(val1[0]);
+            expect(result[1]).toBe(val2[0]);
+            expect(result[2]).toBe(val2[1]);
+            */
+            console.debug("RESOLVE:", result);
+            resolve(result);
+          }
+        });
       });
 
-      port1Emitter.emit('message', {
+      port1Emitter.emit("message", {
         type: EVENTS.scanResult,
         value: {
           workerId: 1,
@@ -123,7 +135,7 @@ describe('FileWorkerService', () => {
           pending: 0,
         },
       } as WorkerMessage);
-      port1Emitter.emit('message', {
+      port1Emitter.emit("message", {
         type: EVENTS.scanResult,
         value: {
           workerId: 2,
@@ -134,18 +146,25 @@ describe('FileWorkerService', () => {
           pending: 342,
         },
       });
+
+      const result = await done;
+      console.debug("GOT:", result);
+      expect(result[0]).toEqual("");
+      expect(result[1]).toEqual(val1[0]);
+      expect(result[2]).toEqual(val2[0]);
+      expect(result[3]).toEqual(val2[1]);
     });
 
     it('should add a job on "scanResult" when folder is not a target', () => {
       fileWorkerService.startScan(stream$, params);
       const val = [
-        '/path/1/valid',
-        '/path/im/target',
-        '/path/other/target',
-        '/path/2/valid',
+        "/path/1/valid",
+        "/path/im/target",
+        "/path/other/target",
+        "/path/2/valid",
       ];
 
-      port1Emitter.emit('message', {
+      port1Emitter.emit("message", {
         type: EVENTS.scanResult,
         value: {
           workerId: 1,
@@ -159,17 +178,17 @@ describe('FileWorkerService', () => {
         },
       } as WorkerMessage);
 
-      expect(messageChannelPort1Mock).toBeCalledWith({
+      expect(mocks.messageChannelPort1Mock).toBeCalledWith({
         type: EVENTS.explore,
         value: { path: val[0] },
       });
 
-      expect(messageChannelPort1Mock).toHaveBeenCalledWith({
+      expect(mocks.messageChannelPort1Mock).toHaveBeenCalledWith({
         type: EVENTS.explore,
         value: { path: val[3] },
       });
 
-      expect(messageChannelPort1Mock).not.toHaveBeenCalledWith({
+      expect(mocks.messageChannelPort1Mock).not.toHaveBeenCalledWith({
         type: EVENTS.explore,
         value: { path: val[2] },
       });
@@ -177,23 +196,23 @@ describe('FileWorkerService', () => {
 
     it('should update searchStatus workerStatus on "alive"', () => {
       fileWorkerService.startScan(stream$, params);
-      port1Emitter.emit('message', {
-        type: 'alive',
+      port1Emitter.emit("message", {
+        type: "alive",
         value: null,
       });
 
-      expect(searchStatus.workerStatus).toBe('scanning');
+      expect(searchStatus.workerStatus).toBe("scanning");
     });
 
-    it('should complete the stream and change worker status when all works have 0 pending tasks', (done) => {
+    it("should complete the stream and change worker status when all works have 0 pending tasks", async () => {
       fileWorkerService.startScan(stream$, params);
-      stream$.subscribe({
-        complete: () => {
-          done();
-        },
+      const done = new Promise<string>((resolve) => {
+        stream$.subscribe((value: string) => {
+          resolve(value);
+        });
       });
 
-      port1Emitter.emit('message', {
+      port1Emitter.emit("message", {
         type: EVENTS.scanResult,
         value: {
           workerId: 0,
@@ -202,14 +221,16 @@ describe('FileWorkerService', () => {
         },
       });
 
-      expect(searchStatus.workerStatus).toBe('finished');
+      await done;
+
+      expect(searchStatus.workerStatus).toBe("finished");
     });
 
     it('should throw error on "error"', () => {
       expect(() => {
         fileWorkerService.startScan(stream$, params);
-        workerEmitter.emit('error');
-        expect(searchStatus.workerStatus).toBe('dead');
+        workerEmitter.emit("error");
+        expect(searchStatus.workerStatus).toBe("dead");
       }).toThrowError();
     });
 
@@ -217,7 +238,7 @@ describe('FileWorkerService', () => {
       fileWorkerService.startScan(stream$, params);
 
       logger.info.mockReset();
-      workerEmitter.emit('exit');
+      workerEmitter.emit("exit");
       expect(logger.info).toBeCalledTimes(1);
     });
   });

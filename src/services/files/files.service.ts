@@ -1,21 +1,22 @@
-import fs, { accessSync, readFileSync, Stats, statSync } from 'fs';
-import {
+import fs, { accessSync, readFileSync, Stats, statSync } from "node:fs";
+import type {
   IFileService,
   IFileStat,
-  IListDirParams,
-} from '../../interfaces/index.js';
-import { readdir, stat } from 'fs/promises';
-import { Observable } from 'rxjs';
+} from "@/interfaces/file-service.interface.js";
+import type { IListDirParams } from "@/interfaces/list-dir-params.interface.js";
+import { readdir, stat } from "node:fs/promises";
+import type { Signal } from "@preact/signals-core";
+import NodePath from "node:path";
 
 export abstract class FileService implements IFileService {
-  abstract getFolderSize(path: string): Observable<number>;
-  abstract listDir(params: IListDirParams): Observable<string>;
+  abstract getFolderSize(path: string): Signal<number>;
+  abstract listDir(parameters: IListDirParams): Signal<string>;
   abstract deleteDir(path: string): Promise<boolean>;
 
   /** Used for dry-run or testing. */
-  async fakeDeleteDir(_path: string): Promise<boolean> {
+  async fakeDeleteDir(): Promise<boolean> {
     const randomDelay = Math.floor(Math.random() * 4000 + 200);
-    await new Promise((r) => setTimeout(r, randomDelay));
+    await new Promise((resolve) => setTimeout(resolve, randomDelay));
     return true;
   }
 
@@ -23,25 +24,25 @@ export abstract class FileService implements IFileService {
     let stat: Stats;
     try {
       stat = statSync(path);
-    } catch (error) {
-      throw new Error('The path does not exist.');
+    } catch {
+      throw new Error("The path does not exist.");
     }
 
     if (!stat.isDirectory()) {
-      throw new Error('The path must point to a directory.');
+      throw new Error("The path must point to a directory.");
     }
 
     try {
       accessSync(path, fs.constants.R_OK);
-    } catch (error) {
-      throw new Error('Cannot read the specified path.');
+    } catch {
+      throw new Error("Cannot read the specified path.");
     }
 
     return true;
   }
 
   convertKbToGB(kb: number): number {
-    const factorKBtoGB = 1048576;
+    const factorKBtoGB = 1_048_576;
     return kb / factorKBtoGB;
   }
 
@@ -56,7 +57,7 @@ export abstract class FileService implements IFileService {
   }
 
   getFileContent(path: string): string {
-    const encoding = 'utf8';
+    const encoding = "utf8";
     return readFileSync(path, encoding);
   }
 
@@ -75,7 +76,7 @@ export abstract class FileService implements IFileService {
    * from these locations could potentially disrupt the normal operation of these applications.
    */
   isDangerous(path: string): boolean {
-    const hiddenFilePattern = /(^|\/)\.[^/.]/g;
+    const hiddenFilePattern = /(^|\/)\.[^./]/g;
     const macAppsPattern = /(^|\/)Applications\/[^/]+\.app\//g;
     const windowsAppDataPattern = /(^|\\)AppData\\/g;
 
@@ -91,28 +92,22 @@ export abstract class FileService implements IFileService {
     const sorted = files.sort(
       (a, b) => b.modificationTime - a.modificationTime,
     );
-    return sorted.length > 0 ? sorted[0].modificationTime : -1;
+    return sorted.length > 0 ? (sorted[0]?.modificationTime ?? -1) : -1;
   }
 
   async getFileStatsInDir(dirname: string): Promise<IFileStat[]> {
-    let files: IFileStat[] = [];
+    const files: IFileStat[] = [];
     const items = await readdir(dirname, { withFileTypes: true });
 
     for (const item of items) {
+      const path = NodePath.join(dirname, item.name);
       if (item.isDirectory()) {
-        if (item.name === 'node_modules') {
+        if (item.name === "node_modules") {
           continue;
         }
-        files = [
-          ...files,
-          ...(await this.getFileStatsInDir(`${dirname}/${item.name}`).catch(
-            () => [],
-          )),
-        ];
+        files.push(...(await this.getFileStatsInDir(path).catch(() => [])));
       } else {
-        const path = `${dirname}/${item.name}`;
         const fileStat = await stat(path);
-
         files.push({ path, modificationTime: fileStat.mtimeMs / 1000 });
       }
     }

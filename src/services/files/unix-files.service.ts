@@ -1,36 +1,31 @@
-import { exec } from 'child_process';
-
-import { FileService } from './files.service.js';
-import { IListDirParams } from '../../interfaces/index.js';
-import { Observable, Subject } from 'rxjs';
-import { StreamService } from '../stream.service.js';
-import { FileWorkerService } from './files.worker.service.js';
+import { exec } from "node:child_process";
+import { FileService } from "@/services/files/files.service.js";
+import { IListDirParams } from "@/interfaces/list-dir-params.interface.js";
+import { FileWorkerService } from "@/services/files/files.worker.service.js";
+import { signal, Signal } from "@preact/signals-core";
 
 export abstract class UnixFilesService extends FileService {
-  constructor(
-    protected streamService: StreamService,
-    protected fileWorkerService: FileWorkerService,
-  ) {
+  constructor(protected fileWorkerService: FileWorkerService) {
     super();
   }
 
-  abstract override getFolderSize(path: string): Observable<any>;
+  abstract override getFolderSize(path: string): Signal<number>;
 
-  listDir(params: IListDirParams): Observable<string> {
-    const stream$ = new Subject<string>();
-    this.fileWorkerService.startScan(stream$, params);
-    return stream$;
+  listDir(parameters: IListDirParams): Signal<string> {
+    const stream$ = signal<string>("");
+    this.fileWorkerService.startScan(stream$, parameters);
+    return stream$ as never;
   }
 
   async deleteDir(path: string): Promise<boolean> {
     return new Promise((resolve, reject) => {
       const command = `rm -rf "${path}"`;
-      exec(command, (error, stdout, stderr) => {
+      exec(command, (error, _, stderr) => {
         if (error !== null) {
           reject(error);
           return;
         }
-        if (stderr !== '') {
+        if (stderr !== "") {
           reject(stderr);
           return;
         }
@@ -39,28 +34,28 @@ export abstract class UnixFilesService extends FileService {
     });
   }
 
-  protected prepareFindArgs(params: IListDirParams): string[] {
-    const { path, target, exclude } = params;
-    let args: string[] = [path];
+  protected prepareFindArgs(parameters: IListDirParams) {
+    const { path, target, exclude } = parameters;
+    let args = [path];
 
-    if (exclude !== undefined && exclude.length > 0) {
+    if (exclude?.length) {
       args = [...args, this.prepareExcludeArgs(exclude)].flat();
     }
 
-    args = [...args, '-name', target, '-prune'];
+    args = [...args, "-name", target, "-prune"];
 
     return args;
   }
 
-  protected prepareExcludeArgs(exclude: string[]): string[] {
-    const excludeDirs = exclude.map((dir: string) => [
-      '-not',
-      '(',
-      '-name',
+  protected prepareExcludeArgs(exclude: string[]) {
+    const excludeDirectories = exclude.map((dir: string) => [
+      "-not",
+      "(",
+      "-name",
       dir,
-      '-prune',
-      ')',
+      "-prune",
+      ")",
     ]);
-    return excludeDirs.flat();
+    return excludeDirectories.flat();
   }
 }

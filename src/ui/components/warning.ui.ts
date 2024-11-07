@@ -1,15 +1,16 @@
-import { InteractiveUi, BaseUi } from '../base.ui.js';
-import { Subject } from 'rxjs';
-import { IKeyPress } from '../../interfaces/key-press.interface.js';
-import { INFO_MSGS, UI_POSITIONS } from '../../constants/index.js';
+import { InteractiveUi, BaseUi } from "../base.ui.js";
+import { IKeyPress } from "@/interfaces/key-press.interface.js";
+import { UI_POSITIONS } from "@/constants/main.constants.js";
+import { INFO_MSGS } from "@/constants/messages.constants.js";
+import { signal } from "@preact/signals-core";
 
 export class WarningUi extends BaseUi implements InteractiveUi {
   private showDeleteAllWarning = false;
-  readonly confirm$ = new Subject<null>();
+  readonly confirm$ = signal<boolean>(false);
 
-  private readonly KEYS = {
-    y: () => this.confirm$.next(null),
-  };
+  private readonly KEYS: Record<string, () => void> = {
+    y: () => (this.confirm$.value = true),
+  } as const;
 
   onKeyInput({ name }: IKeyPress): void {
     const action = this.KEYS[name];

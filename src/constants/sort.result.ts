@@ -1,18 +1,20 @@
-import { IFolder } from '../interfaces/folder.interface.js';
+import type { IFolder } from "@/interfaces/folder.interface.js";
 
-export const FOLDER_SORT = {
+type FolderSortActions = Record<string, (a: IFolder, b: IFolder) => number>;
+
+export const FOLDER_SORT: FolderSortActions = {
   path: (a: IFolder, b: IFolder) => (a.path > b.path ? 1 : -1),
   size: (a: IFolder, b: IFolder) => (a.size < b.size ? 1 : -1),
-  'last-mod': (a: IFolder, b: IFolder) => {
+  "last-mod": (a: IFolder, b: IFolder) => {
     if (a.modificationTime === b.modificationTime) {
-      return FOLDER_SORT.path(a, b);
+      return FOLDER_SORT["path"]!(a, b);
     }
 
-    if (a.modificationTime === null && b.modificationTime !== null) {
+    if (!a.modificationTime && b.modificationTime) {
       return 1;
     }
 
-    if (b.modificationTime === null && a.modificationTime !== null) {
+    if (!b.modificationTime && a.modificationTime) {
       return -1;
     }
 

@@ -3,21 +3,20 @@ import {
   DEFAULT_CONFIG,
   MARGINS,
   OVERFLOW_CUT_FROM,
-} from '../../constants/main.constants.js';
-
-import { InteractiveUi } from '../base.ui.js';
-import { HeavyUi } from '../heavy.ui.js';
-
-import { ConsoleService } from '../../services/console.service.js';
-import { FileService } from '../../services/index.js';
-import { IConfig } from '../../interfaces/config.interface.js';
-import { IFolder } from '../../interfaces/folder.interface.js';
-import { IKeyPress } from 'src/interfaces/key-press.interface.js';
-import { INFO_MSGS } from '../../constants/messages.constants.js';
-import { ResultsService } from '../../services/results.service.js';
-import { Subject } from 'rxjs';
-import colors from 'colors';
-import { resolve } from 'node:path';
+} from "@/constants/main.constants.js";
+import { InteractiveUi } from "@/ui/base.ui.js";
+import { HeavyUi } from "@/ui/heavy.ui.js";
+import { ConsoleService } from "@/services/console.service.js";
+import { FileService } from "@/services/files/files.service.js";
+import { IConfig } from "@/interfaces/config.interface.js";
+import { IFolder } from "@/interfaces/folder.interface.js";
+import { IKeyPress } from "@/interfaces/key-press.interface.js";
+import { INFO_MSGS } from "@/constants/messages.constants.js";
+import { ResultsService } from "@/services/results.service.js";
+import colors from "colors";
+import NodePath from "node:path";
+import { ColorFn } from "@/ui/utils.js";
+import { signal } from "@preact/signals-core";
 
 export class ResultsUi extends HeavyUi implements InteractiveUi {
   resultIndex = 0;
@@ -25,12 +24,12 @@ export class ResultsUi extends HeavyUi implements InteractiveUi {
   scroll: number = 0;
   private haveResultsAfterCompleted = true;
 
-  readonly delete$ = new Subject<IFolder>();
-  readonly showErrors$ = new Subject<null>();
-  readonly openFolder$ = new Subject<string>();
+  readonly delete$ = signal<IFolder>();
+  readonly showErrors$ = signal<null>();
+  readonly openFolder$ = signal<string>();
 
   private readonly config: IConfig = DEFAULT_CONFIG;
-  private readonly KEYS = {
+  private readonly KEYS: Record<string, () => void> = {
     up: () => this.cursorUp(),
     down: () => this.cursorDown(),
     space: () => this.delete(),
@@ -59,12 +58,15 @@ export class ResultsUi extends HeavyUi implements InteractiveUi {
 
   private openFolder(): void {
     const folder = this.resultsService.results[this.resultIndex];
-    const parentPath = resolve(folder.path, '..');
-    this.openFolder$.next(parentPath);
+    if (!folder) {
+      return;
+    }
+    const parentPath = NodePath.resolve(folder.path, "..");
+    this.openFolder$.value = parentPath;
   }
 
   onKeyInput({ name }: IKeyPress): void {
-    const action: (() => void) | undefined = this.KEYS[name];
+    const action = this.KEYS[name];
     if (action === undefined) {
       return;
     }
@@ -98,14 +100,14 @@ export class ResultsUi extends HeavyUi implements InteractiveUi {
   private printResults(): void {
     const visibleFolders = this.getVisibleScrollFolders();
 
-    visibleFolders.forEach((folder: IFolder, index: number) => {
+    for (const [index, folder] of visibleFolders.entries()) {
       const row = MARGINS.ROW_RESULTS_START + index;
       this.printFolderRow(folder, row);
-    });
+    }
   }
 
   private noResults(): void {
-    const targetFolderColored: string = colors[DEFAULT_CONFIG.warningColor](
+    const targetFolderColored: string = ColorFn(DEFAULT_CONFIG.warningColor)(
       this.config.targetFolder,
     );
     const message = `No ${targetFolderColored} found!`;
@@ -122,15 +124,15 @@ export class ResultsUi extends HeavyUi implements InteractiveUi {
 
     lastModification = colors.gray(lastModification);
     if (isRowSelected) {
-      path = colors[this.config.backgroundColor](path);
-      size = colors[this.config.backgroundColor](size);
-      lastModification = colors[this.config.backgroundColor](lastModification);
+      path = ColorFn(this.config.backgroundColor)(path);
+      size = ColorFn(this.config.backgroundColor)(size);
+      lastModification = ColorFn(this.config.backgroundColor)(lastModification);
 
       this.paintBgRow(row);
     }
 
     if (folder.isDangerous) {
-      path = colors[DEFAULT_CONFIG.warningColor](path + '⚠️');
+      path = ColorFn(DEFAULT_CONFIG.warningColor)(path + "⚠️");
     }
 
     this.printAt(path, {
@@ -156,22 +158,19 @@ export class ResultsUi extends HeavyUi implements InteractiveUi {
     let folderSize = `${folder.size.toFixed(DECIMALS_SIZE)} GB`;
     let daysSinceLastModification: string;
 
-    if (folder.modificationTime !== null && folder.modificationTime > 0) {
-      daysSinceLastModification = `${Math.floor(
-        (new Date().getTime() / 1000 - folder.modificationTime) / 86400,
-      )}d`;
-    } else {
-      daysSinceLastModification = '--';
-    }
+    daysSinceLastModification =
+      folder.modificationTime !== null && folder.modificationTime > 0
+        ? `${Math.floor((Date.now() / 1000 - folder.modificationTime) / 86_400)}d`
+        : "--";
 
     if (folder.isDangerous) {
-      daysSinceLastModification = 'xx';
+      daysSinceLastModification = "xx";
     }
 
     // Align to right
     const alignMargin = 4 - daysSinceLastModification.length;
     daysSinceLastModification =
-      ' '.repeat(alignMargin > 0 ? alignMargin : 0) + daysSinceLastModification;
+      " ".repeat(alignMargin > 0 ? alignMargin : 0) + daysSinceLastModification;
 
     if (!this.config.folderSizeInGB) {
       const size = this.fileService.convertGBToMB(folder.size);
@@ -179,11 +178,11 @@ export class ResultsUi extends HeavyUi implements InteractiveUi {
       const decimals = size < 999 ? DECIMALS_SIZE : 1;
       const sizeText = size.toFixed(decimals);
       const OFFSET_COLUMN = 6;
-      const space = ' '.repeat(OFFSET_COLUMN - sizeText.length);
+      const space = " ".repeat(OFFSET_COLUMN - sizeText.length);
       folderSize = `${space}${sizeText} MB`;
     }
 
-    const folderSizeText = folder.size > 0 ? folderSize : '--';
+    const folderSizeText = folder.size > 0 ? folderSize : "--";
 
     return {
       path: folderText,
@@ -281,7 +280,7 @@ export class ResultsUi extends HeavyUi implements InteractiveUi {
   private getFolderPathText(folder: IFolder): string {
     let cutFrom = OVERFLOW_CUT_FROM;
     let text = folder.path;
-    const ACTIONS = {
+    const ACTIONS: Record<string, () => void> = {
       deleted: () => {
         cutFrom += INFO_MSGS.DELETED_FOLDER.length;
         text = INFO_MSGS.DELETED_FOLDER + text;
@@ -290,14 +289,14 @@ export class ResultsUi extends HeavyUi implements InteractiveUi {
         cutFrom += INFO_MSGS.DELETING_FOLDER.length;
         text = INFO_MSGS.DELETING_FOLDER + text;
       },
-      'error-deleting': () => {
+      "error-deleting": () => {
         cutFrom += INFO_MSGS.ERROR_DELETING_FOLDER.length;
         text = INFO_MSGS.ERROR_DELETING_FOLDER + text;
       },
     };
 
-    if (ACTIONS[folder.status] !== undefined) {
-      ACTIONS[folder.status]();
+    if (folder.status in ACTIONS) {
+      ACTIONS[folder.status]!();
     }
 
     text = this.consoleService.shortenText(
@@ -315,26 +314,26 @@ export class ResultsUi extends HeavyUi implements InteractiveUi {
   }
 
   private paintStatusFolderPath(folderString: string, action: string): string {
-    const TRANSFORMATIONS = {
-      deleted: (text) =>
+    const TRANSFORMATIONS: Record<string, (text: string) => string> = {
+      deleted: (text: string) =>
         text.replace(
           INFO_MSGS.DELETED_FOLDER,
           colors.green(INFO_MSGS.DELETED_FOLDER),
         ),
-      deleting: (text) =>
+      deleting: (text: string) =>
         text.replace(
           INFO_MSGS.DELETING_FOLDER,
           colors.yellow(INFO_MSGS.DELETING_FOLDER),
         ),
-      'error-deleting': (text) =>
+      "error-deleting": (text: string) =>
         text.replace(
           INFO_MSGS.ERROR_DELETING_FOLDER,
           colors.red(INFO_MSGS.ERROR_DELETING_FOLDER),
         ),
     };
 
-    return TRANSFORMATIONS[action] !== undefined
-      ? TRANSFORMATIONS[action](folderString)
+    return action in TRANSFORMATIONS
+      ? TRANSFORMATIONS[action]!(folderString)
       : folderString;
   }
 
@@ -360,13 +359,18 @@ export class ResultsUi extends HeavyUi implements InteractiveUi {
   private paintBgRow(row: number): void {
     const startPaint = MARGINS.FOLDER_COLUMN_START;
     const endPaint = this.terminal.columns - MARGINS.FOLDER_SIZE_COLUMN;
-    let paintSpaces = '';
+    let paintSpaces = "";
 
-    for (let i = startPaint; i < endPaint; ++i) {
-      paintSpaces += ' ';
+    for (let index = startPaint; index < endPaint; ++index) {
+      paintSpaces += " ";
     }
 
-    this.printAt(colors[this.config.backgroundColor](paintSpaces), {
+    const {
+      config: { backgroundColor },
+    } = this;
+
+    const color = ColorFn(backgroundColor);
+    this.printAt(color(paintSpaces), {
       x: startPaint,
       y: row,
     });
@@ -374,7 +378,9 @@ export class ResultsUi extends HeavyUi implements InteractiveUi {
 
   private delete(): void {
     const folder = this.resultsService.results[this.resultIndex];
-    this.delete$.next(folder);
+    if (folder) {
+      this.delete$.value = folder;
+    }
   }
 
   /** Returns the number of results that can be displayed. */
@@ -388,10 +394,10 @@ export class ResultsUi extends HeavyUi implements InteractiveUi {
   }
 
   private showErrorsPopup(): void {
-    this.showErrors$.next(null);
+    this.showErrors$.value = null;
   }
 
-  private clamp(num: number, min: number, max: number): number {
-    return Math.min(Math.max(num, min), max);
+  private clamp(number_: number, min: number, max: number): number {
+    return Math.min(Math.max(number_, min), max);
   }
 }

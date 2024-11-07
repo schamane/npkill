@@ -1,4 +1,4 @@
-export interface IStats {
+export type IStats = {
   spaceReleased: string;
   totalSpace: string;
-}
+};

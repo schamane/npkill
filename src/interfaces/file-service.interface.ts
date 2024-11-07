@@ -1,9 +1,9 @@
-import { IListDirParams } from '../interfaces/list-dir-params.interface.js';
-import { Observable } from 'rxjs';
+import type { IListDirParams } from "../interfaces/list-dir-params.interface.js";
+import type { Signal } from "@preact/signals-core";
 
 export interface IFileService {
-  getFolderSize: (path: string) => Observable<number>;
-  listDir: (params: IListDirParams) => Observable<string>;
+  getFolderSize: (path: string) => Signal<number>;
+  listDir: (parameters: IListDirParams) => Signal<string>;
   deleteDir: (path: string) => Promise<boolean>;
   fakeDeleteDir: (_path: string) => Promise<boolean>;
   isValidRootFolder: (path: string) => boolean;

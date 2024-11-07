@@ -1,34 +1,33 @@
-import { jest } from '@jest/globals';
-import { StartParameters } from '../src/models/start-parameters.model.js';
-import { BehaviorSubject, Subject } from 'rxjs';
-import { IFolder } from '../src/interfaces/index.js';
+import { jest } from "@jest/globals";
+import { StartParameters } from "../src/models/start-parameters.model.js";
+import { IFolder } from "../src/interfaces/index.js";
 
 const resultsUiDeleteMock$ = new Subject<IFolder>();
 const setDeleteAllWarningVisibilityMock = jest.fn();
 
-jest.mock('../src/dirname.js', () => {
+jest.mock("../src/dirname.js", () => {
   return {};
 });
 
-jest.unstable_mockModule('../src/ui/components/header/header.ui.js', () => ({
+jest.unstable_mockModule("../src/ui/components/header/header.ui.js", () => ({
   HeaderUi: jest.fn(),
 }));
-jest.unstable_mockModule('../src/ui/components/header/stats.ui.js', () => ({
+jest.unstable_mockModule("../src/ui/components/header/stats.ui.js", () => ({
   StatsUi: jest.fn(() => ({ render: jest.fn() })),
 }));
-jest.unstable_mockModule('../src/ui/components/header/status.ui.js', () => ({
+jest.unstable_mockModule("../src/ui/components/header/status.ui.js", () => ({
   StatusUi: jest.fn(() => ({
     start: jest.fn(),
     render: jest.fn(),
   })),
 }));
-jest.unstable_mockModule('../src/ui/components/general.ui.js', () => ({
+jest.unstable_mockModule("../src/ui/components/general.ui.js", () => ({
   GeneralUi: jest.fn(),
 }));
-jest.unstable_mockModule('../src/ui/components/help.ui.js', () => ({
+jest.unstable_mockModule("../src/ui/components/help.ui.js", () => ({
   HelpUi: jest.fn(),
 }));
-jest.unstable_mockModule('../src/ui/components/results.ui.js', () => ({
+jest.unstable_mockModule("../src/ui/components/results.ui.js", () => ({
   ResultsUi: jest.fn(() => ({
     delete$: resultsUiDeleteMock$,
     showErrors$: { subscribe: jest.fn() },
@@ -36,30 +35,30 @@ jest.unstable_mockModule('../src/ui/components/results.ui.js', () => ({
     render: jest.fn(),
   })),
 }));
-jest.unstable_mockModule('../src/ui/components/logs.ui.js', () => ({
+jest.unstable_mockModule("../src/ui/components/logs.ui.js", () => ({
   LogsUi: jest.fn(() => ({
     close$: { subscribe: jest.fn() },
   })),
 }));
-jest.unstable_mockModule('../src/ui/components/warning.ui.js', () => ({
+jest.unstable_mockModule("../src/ui/components/warning.ui.js", () => ({
   WarningUi: jest.fn(() => ({
     setDeleteAllWarningVisibility: setDeleteAllWarningVisibilityMock,
     render: jest.fn(),
     confirm$: new Subject(),
   })),
 }));
-jest.unstable_mockModule('../src/ui/base.ui.js', () => ({
+jest.unstable_mockModule("../src/ui/base.ui.js", () => ({
   BaseUi: { setVisible: jest.fn() },
 }));
-jest.unstable_mockModule('../src/ui/heavy.ui.js', () => ({
+jest.unstable_mockModule("../src/ui/heavy.ui.js", () => ({
   HeavyUi: {},
 }));
 
 const ControllerConstructor = //@ts-ignore
-  (await import('../src/controller.js')).Controller;
+  (await import("../src/controller.js")).Controller;
 class Controller extends ControllerConstructor {}
 
-describe('Controller test', () => {
+describe("Controller test", () => {
   let controller;
 
   const filesServiceDeleteMock = jest
@@ -70,9 +69,9 @@ describe('Controller test', () => {
     .mockResolvedValue(true);
 
   const linuxFilesServiceMock: any = {
-    getFileContent: jest.fn().mockReturnValue('{}'),
-    isValidRootFolder: jest.fn().mockReturnValue('true'),
-    isSafeToDelete: jest.fn().mockReturnValue('true'),
+    getFileContent: jest.fn().mockReturnValue("{}"),
+    isValidRootFolder: jest.fn().mockReturnValue("true"),
+    isSafeToDelete: jest.fn().mockReturnValue("true"),
     deleteDir: filesServiceDeleteMock,
     fakeDeleteDir: filesServiceFakeDeleteMock,
   };
@@ -110,8 +109,8 @@ describe('Controller test', () => {
   ///////////////////////////////////
 
   beforeEach(() => {
-    exitSpy = jest.spyOn(process, 'exit').mockImplementation((number) => {
-      throw new Error('process.exit: ' + number);
+    exitSpy = jest.spyOn(process, "exit").mockImplementation((number) => {
+      throw new Error("process.exit: " + number);
     });
     controller = new Controller(
       loggerServiceMock,
@@ -124,26 +123,26 @@ describe('Controller test', () => {
       uiServiceMock,
     );
 
-    Object.defineProperty(process.stdout, 'columns', { value: 80 });
-    Object.defineProperty(process.stdout, 'isTTY', { value: true });
+    Object.defineProperty(process.stdout, "columns", { value: 80 });
+    Object.defineProperty(process.stdout, "isTTY", { value: true });
 
-    parseArgumentsSpy = jest.spyOn(controller, 'parseArguments');
+    parseArgumentsSpy = jest.spyOn(controller, "parseArguments");
     showHelpSpy = jest
-      .spyOn(controller, 'showHelp')
+      .spyOn(controller, "showHelp")
       .mockImplementation(() => ({}));
     prepareScreenSpy = jest
-      .spyOn(controller, 'prepareScreen')
+      .spyOn(controller, "prepareScreen")
       .mockImplementation(() => ({}));
     setupEventsListenerSpy = jest
-      .spyOn(controller, 'setupEventsListener')
+      .spyOn(controller, "setupEventsListener")
       .mockImplementation(() => ({}));
-    scanSpy = jest.spyOn(controller, 'scan').mockImplementation(() => ({}));
+    scanSpy = jest.spyOn(controller, "scan").mockImplementation(() => ({}));
     checkVersionSpy = jest
-      .spyOn(controller, 'checkVersion')
+      .spyOn(controller, "checkVersion")
       .mockImplementation(() => ({}));
   });
 
-  it('#init normal start should call some methods', () => {
+  it("#init normal start should call some methods", () => {
     controller.init();
     expect(showHelpSpy).toHaveBeenCalledTimes(0);
     expect(setupEventsListenerSpy).toHaveBeenCalledTimes(1);
@@ -151,13 +150,13 @@ describe('Controller test', () => {
     expect(checkVersionSpy).toHaveBeenCalledTimes(1);
   });
 
-  describe('#getArguments', () => {
-    const mockParameters = (parameters: Object) => {
+  describe("#getArguments", () => {
+    const mockParameters = (parameters: object) => {
       consoleService.getParameters = () => {
         const startParameters = new StartParameters();
-        Object.keys(parameters).forEach((key) => {
+        for (const key of Object.keys(parameters)) {
           startParameters.add(key, parameters[key]);
-        });
+        }
         return startParameters;
       };
       /*  jest
@@ -172,39 +171,39 @@ describe('Controller test', () => {
     };
 
     afterEach(() => {
-      jest.spyOn(process, 'exit').mockReset();
+      jest.spyOn(process, "exit").mockReset();
       mockParameters({});
     });
 
-    it('#showHelp should called if --help flag is present and exit', () => {
+    it("#showHelp should called if --help flag is present and exit", () => {
       mockParameters({ help: true });
       expect(() => controller.init()).toThrow();
       expect(showHelpSpy).toHaveBeenCalledTimes(1);
       expect(exitSpy).toHaveBeenCalledTimes(1);
     });
 
-    it('#showProgramVersion should called if --version flag is present and exit', () => {
+    it("#showProgramVersion should called if --version flag is present and exit", () => {
       mockParameters({ version: true });
       const functionSpy = jest
-        .spyOn(controller, 'showProgramVersion')
+        .spyOn(controller, "showProgramVersion")
         .mockImplementation(() => ({}));
       expect(() => controller.init()).toThrow();
       expect(functionSpy).toHaveBeenCalledTimes(1);
       expect(exitSpy).toHaveBeenCalledTimes(1);
     });
 
-    it('#checkVersionn should not be called if --no-check-updates is given', () => {
-      mockParameters({ 'no-check-updates': true });
-      const functionSpy = spyMethod('checkVersion');
+    it("#checkVersionn should not be called if --no-check-updates is given", () => {
+      mockParameters({ "no-check-updates": true });
+      const functionSpy = spyMethod("checkVersion");
       controller.init();
       expect(functionSpy).toHaveBeenCalledTimes(0);
     });
 
-    describe('--sort-by parameter   ', () => {
-      it('Should detect if option is invalid', () => {
-        mockParameters({ 'sort-by': 'novalid' });
-        spyMethod('isValidSortParam', () => false);
-        const functionSpy = spyMethod('invalidSortParam');
+    describe("--sort-by parameter   ", () => {
+      it("Should detect if option is invalid", () => {
+        mockParameters({ "sort-by": "novalid" });
+        spyMethod("isValidSortParam", () => false);
+        const functionSpy = spyMethod("invalidSortParam");
         controller.init();
         expect(functionSpy).toHaveBeenCalledTimes(1);
       });
@@ -212,13 +211,13 @@ describe('Controller test', () => {
       // TODO test that check sortBy property is changed
     });
 
-    describe('--delete-all', () => {
+    describe("--delete-all", () => {
       beforeEach(() => {
         jest.clearAllMocks();
       });
 
-      it('Should show a warning before start scan', () => {
-        mockParameters({ 'delete-all': true });
+      it("Should show a warning before start scan", () => {
+        mockParameters({ "delete-all": true });
         expect(setDeleteAllWarningVisibilityMock).toHaveBeenCalledTimes(0);
         expect(scanSpy).toHaveBeenCalledTimes(0);
 
@@ -227,8 +226,8 @@ describe('Controller test', () => {
         expect(scanSpy).toHaveBeenCalledTimes(0);
       });
 
-      it('Should no show a warning if -y is given', () => {
-        mockParameters({ 'delete-all': true, yes: true });
+      it("Should no show a warning if -y is given", () => {
+        mockParameters({ "delete-all": true, yes: true });
         expect(setDeleteAllWarningVisibilityMock).toHaveBeenCalledTimes(0);
         expect(scanSpy).toHaveBeenCalledTimes(0);
 
@@ -238,21 +237,21 @@ describe('Controller test', () => {
       });
     });
 
-    describe('--dry-run', () => {
+    describe("--dry-run", () => {
       let testFolder: IFolder;
 
       beforeEach(() => {
         testFolder = {
-          path: '/my/path',
+          path: "/my/path",
           size: 0,
           modificationTime: 0,
           isDangerous: false,
-          status: 'live',
+          status: "live",
         };
         jest.clearAllMocks();
       });
 
-      it('Should call normal deleteDir function when no --dry-run is included', () => {
+      it("Should call normal deleteDir function when no --dry-run is included", () => {
         controller.init();
 
         expect(filesServiceDeleteMock).toHaveBeenCalledTimes(0);
@@ -265,8 +264,8 @@ describe('Controller test', () => {
         expect(filesServiceDeleteMock).toHaveBeenCalledWith(testFolder.path);
       });
 
-      it('Should call fake deleteDir function instead of deleteDir', () => {
-        mockParameters({ 'dry-run': true });
+      it("Should call fake deleteDir function instead of deleteDir", () => {
+        mockParameters({ "dry-run": true });
         controller.init();
 
         expect(filesServiceDeleteMock).toHaveBeenCalledTimes(0);

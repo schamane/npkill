@@ -1,4 +1,4 @@
-import { WorkerStatus } from '../services';
+import type { WorkerStatus } from "@/services/files/files.worker.service.js";
 
 export class SearchStatus {
   public pendingSearchTasks = 0;
@@ -7,8 +7,8 @@ export class SearchStatus {
   public completedStatsCalculation = 0;
   public resultsFound = 0;
   public pendingDeletions = 0;
-  public workerStatus: WorkerStatus = 'stopped';
-  public workersJobs;
+  public workerStatus: WorkerStatus = "stopped";
+  public workersJobs: number[] = [];
 
   newResult(): void {
     this.resultsFound++;

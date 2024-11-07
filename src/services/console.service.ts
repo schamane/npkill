@@ -1,52 +1,55 @@
-import { OPTIONS, WIDTH_OVERFLOW } from '../constants/index.js';
+import type { ICliOptions } from "@/interfaces/cli-options.interface.js";
+import path from "node:path";
+import readline from "node:readline";
+import { StartParameters } from "@/models/start-parameters.model.js";
+import { WIDTH_OVERFLOW } from "@/constants/main.constants.js";
+import { OPTIONS } from "@/constants/cli.constants.js";
 
-import { ICliOptions } from '../interfaces/cli-options.interface.js';
-import { extname } from 'path';
-import * as readline from 'node:readline';
-import { StartParameters } from '../models/start-parameters.model.js';
+const { stdin } = process;
 
 export class ConsoleService {
+  private static options = new StartParameters();
+
+  dispatch() {
+    ConsoleService.options.reset();
+  }
+
   getParameters(rawArgv: string[]): StartParameters {
     // This needs a refactor, but fck, is a urgent update
     const rawProgramArgvs = this.removeSystemArgvs(rawArgv);
     const argvs = this.normalizeParams(rawProgramArgvs);
-    const options: StartParameters = new StartParameters();
-
-    argvs.forEach((argv, index) => {
+    for (const [index, argv] of argvs.entries()) {
       if (!this.isArgOption(argv) || !this.isValidOption(argv)) {
-        return;
+        continue;
       }
-      const nextArgv = argvs[index + 1];
+      const nextArgv = argvs[index + 1] ?? "";
       const option = this.getOption(argv);
 
-      if (option === undefined) {
-        throw new Error('Invalid option name.');
+      if (!option) {
+        throw new Error("Invalid option name.");
       }
 
-      const optionName = option.name;
-      options.add(
-        optionName,
+      const { name } = option;
+      ConsoleService.options.add(
+        name,
         this.isArgHavingParams(nextArgv) ? nextArgv : true,
       );
-    });
+    }
 
-    return options;
+    return ConsoleService.options;
   }
 
   splitWordsByWidth(text: string, width: number): string[] {
     const splitRegex = new RegExp(
       `(?![^\\n]{1,${width}}$)([^\\n]{1,${width}})\\s`,
-      'g',
+      "g",
     );
-    const splitText = this.replaceString(text, splitRegex, '$1\n');
+    const splitText = this.replaceString(text, splitRegex, "$1\n");
     return this.splitData(splitText);
   }
 
-  splitData(data: string, separator = '\n'): string[] {
-    if (data === '') {
-      return [];
-    }
-    return data.split(separator);
+  splitData(data: string, separator = "\n"): string[] {
+    return data.split(separator).filter(Boolean);
   }
 
   replaceString(
@@ -62,19 +65,19 @@ export class ConsoleService {
       return text;
     }
 
-    const startPartB = text.length - (width - startCut - WIDTH_OVERFLOW.length);
-    const partA = text.substring(startCut, -1);
-    const partB = text.substring(startPartB, text.length);
+    const startPartB = text.length + startCut + WIDTH_OVERFLOW.length - width;
+    const partA = text.slice(0, startCut);
+    const partB = text.slice(startPartB);
 
-    return partA + WIDTH_OVERFLOW + partB;
+    return `${partA}${WIDTH_OVERFLOW}${partB}`;
   }
 
   isRunningBuild(): boolean {
-    return extname(import.meta.url) === '.js';
+    return path.extname(import.meta.url) === ".js";
   }
 
   startListenKeyEvents(): void {
-    readline.emitKeypressEvents(process.stdin);
+    readline.emitKeypressEvents(stdin);
   }
 
   /** Argvs can be specified for example by
@@ -83,7 +86,7 @@ export class ConsoleService {
    *  method convert the second to first.
    */
   private normalizeParams(argvs: string[]): string[] {
-    return argvs.join('=').split('=');
+    return argvs.join("=").split("=");
   }
 
   private isValidShortenParams(
@@ -104,21 +107,21 @@ export class ConsoleService {
   }
 
   private isArgOption(argv: string): boolean {
-    return argv.charAt(0) === '-';
+    return argv.charAt(0) === "-";
   }
 
   private isArgHavingParams(nextArgv: string): boolean {
     return (
-      nextArgv !== undefined && nextArgv !== '' && !this.isArgOption(nextArgv)
+      nextArgv !== undefined && nextArgv !== "" && !this.isArgOption(nextArgv)
     );
   }
 
-  private isValidOption(arg: string): boolean {
-    return OPTIONS.some((option) => option.arg.includes(arg));
+  private isValidOption(argument: string): boolean {
+    return OPTIONS.some(({ arg }) => arg.includes(argument));
   }
 
-  private getOption(arg: string): ICliOptions | undefined {
-    return OPTIONS.find((option) => option.arg.includes(arg));
+  private getOption(argument: string): ICliOptions | undefined {
+    return OPTIONS.find(({ arg }) => arg.includes(argument));
   }
 
   private isNegative(numb: number): boolean {

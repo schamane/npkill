@@ -1,4 +1,30 @@
 {
-  "editor.formatOnSave": true,
-  "debug.javascript.autoAttachFilter": "onlyWithFlag"
+  "editor.formatOnSave": false,
+  "files.exclude": {
+    "**/.DS_Store": true,
+    "**/node_modules/": true
+  },
+  "search.exclude": {
+    "build": true,
+    "node_modules": true
+  },
+  "eslint.validate": ["javascript", "typescript"],
+  "[json]": {
+    "editor.formatOnSave": true
+  },
+  "[html]": {
+    "editor.formatOnSave": true
+  },
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit",
+    "source.fixAll.tslint": "never"
+  },
+  "eslint.workingDirectories": [
+    {
+      "pattern": "./src/*/"
+    }
+  ],
+  "typescript.inlayHints.parameterNames.enabled": "none",
+  "editor.fontLigatures": true,
+  "typescript.tsdk": "node_modules/typescript/lib"
 }

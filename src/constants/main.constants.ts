@@ -1,25 +1,25 @@
-import { IConfig, IUiPosition } from '../interfaces/index.js';
+import type { IConfig } from "@/interfaces/config.interface";
 
 export const MIN_CLI_COLUMNS_SIZE = 60;
-export const CURSOR_SIMBOL = '~>';
-export const WIDTH_OVERFLOW = '...';
-export const DEFAULT_SIZE = '0 MB';
+export const CURSOR_SIMBOL = "~>";
+export const WIDTH_OVERFLOW = "...";
+export const DEFAULT_SIZE = "0 MB";
 export const DECIMALS_SIZE = 2;
 export const OVERFLOW_CUT_FROM = 11;
 
 export const DEFAULT_CONFIG: IConfig = {
-  backgroundColor: 'bgBlue',
-  warningColor: 'brightYellow',
+  backgroundColor: "bgBlue",
+  warningColor: "brightYellow",
   checkUpdates: true,
   deleteAll: false,
   dryRun: false,
-  exclude: ['.git'],
+  exclude: [".git"],
   excludeHiddenDirectories: false,
   folderSizeInGB: false,
   maxSimultaneousSearch: 6,
   showErrors: true,
-  sortBy: '',
-  targetFolder: 'node_modules',
+  sortBy: "",
+  targetFolder: "node_modules",
   yes: false,
 };
 
@@ -77,4 +77,4 @@ export const BANNER = `-----                    __   .__.__  .__
 -------        \\/|__|        \\/
 `;
 
-export const STREAM_ENCODING = 'utf8';
+export const STREAM_ENCODING = "utf8";

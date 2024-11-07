@@ -1,16 +1,17 @@
 import {
   BANNER,
-  UI_POSITIONS,
-  HELP_MSGS,
-  INFO_MSGS,
   DEFAULT_SIZE,
-} from '../../../constants/index.js';
-import { BaseUi } from '../../base.ui.js';
-import colors from 'colors';
+  UI_POSITIONS,
+} from "@/constants/main.constants.js";
+import { HELP_MSGS, INFO_MSGS } from "@/constants/messages.constants.js";
+import { BaseUi } from "@/ui/base.ui.js";
+import colors from "colors";
 
 export class HeaderUi extends BaseUi {
-  programVersion: string;
-  isDryRun: boolean;
+  programVersion: string = "";
+  isDryRun: boolean = false;
+
+  columns = this.terminal.columns;
 
   render(): void {
     // banner and tutorial
@@ -30,7 +31,7 @@ export class HeaderUi extends BaseUi {
 
     // Columns headers
     this.printAt(colors.bgYellow(colors.black(INFO_MSGS.HEADER_COLUMNS)), {
-      x: this.terminal.columns - INFO_MSGS.HEADER_COLUMNS.length - 4,
+      x: this.columns - INFO_MSGS.HEADER_COLUMNS.length - 4,
       y: UI_POSITIONS.FOLDER_SIZE_HEADER.y,
     });
 
@@ -46,9 +47,11 @@ export class HeaderUi extends BaseUi {
   }
 
   private renderHeader(): void {
-    const { columns } = this.terminal;
-    const spaceToFill = Math.max(0, columns - HELP_MSGS.BASIC_USAGE.length - 2);
-    const text = HELP_MSGS.BASIC_USAGE + ' '.repeat(spaceToFill);
+    const spaceToFill = Math.max(
+      0,
+      this.columns - HELP_MSGS.BASIC_USAGE.length - 2,
+    );
+    const text = `${HELP_MSGS.BASIC_USAGE}${" ".repeat(spaceToFill)}`;
     this.printAt(
       colors.yellow(colors.inverse(text)),
       UI_POSITIONS.TUTORIAL_TIP,

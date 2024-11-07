@@ -1,18 +1,19 @@
-import { LoggerService } from '../../services/logger.service.js';
-import { InteractiveUi, BaseUi } from '../base.ui.js';
-import colors from 'colors';
-import { IPosition } from '../../interfaces/ui-positions.interface.js';
-import { Subject } from 'rxjs';
-import { IKeyPress } from '../../interfaces/key-press.interface.js';
+import { LoggerService } from "../../services/logger.service.js";
+import { InteractiveUi, BaseUi } from "@/ui/base.ui.js";
+import colors from "colors";
+import { IPosition } from "@/interfaces/ui-positions.interface.js";
+import { IKeyPress } from "@/interfaces/key-press.interface.js";
+import { ColorFn } from "@/ui/utils.js";
+import { signal } from "@preact/signals-core";
 
 export class LogsUi extends BaseUi implements InteractiveUi {
-  readonly close$ = new Subject<null>();
-  private size: IPosition;
+  readonly close$ = signal<null>();
+  private size: IPosition = { x: 0, y: 0 };
   private errors = 0;
   private pages: string[][] = [];
   private actualPage = 0;
 
-  private readonly KEYS = {
+  private readonly KEYS: Record<string, () => void> = {
     e: () => this.cyclePages(),
     escape: () => this.close(),
   };
@@ -46,37 +47,37 @@ export class LogsUi extends BaseUi implements InteractiveUi {
   }
 
   private close(): void {
-    this.close$.next(null);
+    this.close$.value = null;
   }
 
   private renderPopup(): void {
     this.calculatePosition();
     for (let x = this.position.x; x < this.size.x; x++) {
       for (let y = this.position.y; y < this.size.y; y++) {
-        let char = ' ';
+        let char = " ";
         if (x === this.position.x || x === this.size.x - 1) {
-          char = '│';
+          char = "│";
         }
         if (y === this.position.y) {
-          char = '═';
+          char = "═";
         }
         if (y === this.size.y - 1) {
-          char = '─';
+          char = "─";
         }
         if (x === this.position.x && y === this.position.y) {
-          char = '╒';
+          char = "╒";
         }
         if (x === this.size.x - 1 && y === this.position.y) {
-          char = '╕';
+          char = "╕";
         }
         if (x === this.position.x && y === this.size.y - 1) {
-          char = '╰';
+          char = "╰";
         }
         if (x === this.size.x - 1 && y === this.size.y - 1) {
-          char = '╯';
+          char = "╯";
         }
 
-        this.printAt(colors['bgBlack'](char), { x, y });
+        this.printAt(colors["bgBlack"](char), { x, y });
       }
     }
 
@@ -84,43 +85,45 @@ export class LogsUi extends BaseUi implements InteractiveUi {
     const maxEntries = this.size.y - this.position.y - 2;
 
     const messagesByLine: string[] = this.logger
-      .get('error')
+      .get("error")
       .map((entry, index) => `${index}. ${entry.message}`)
-      .reduce((acc: string[], line) => {
-        acc = [...acc, ...this.chunkString(line, width)];
-        return acc;
-      }, []);
+      // eslint-disable-next-line unicorn/no-array-reduce
+      .reduce(
+        (accumulator: string[], line) => [
+          ...accumulator,
+          ...this.chunkString(line, width),
+        ],
+        [],
+      );
 
     this.pages = this.chunkArray(messagesByLine, maxEntries);
-    this.errors = this.logger.get('error').length;
+    this.errors = this.logger.get("error").length;
 
     if (messagesByLine.length === 0) {
-      this.printAt(this.stylizeText('No errors!'), {
+      this.printAt(this.stylizeText("No errors!"), {
         x: this.position.x + 1,
         y: this.position.y + 1,
       });
     }
 
-    this.pages[this.actualPage].forEach((entry, index) => {
-      this.printAt(this.stylizeText(entry, 'error'), {
+    for (const [index, entry] of this.pages[this.actualPage!]!.entries()) {
+      this.printAt(this.stylizeText(entry, "error"), {
         x: this.position.x + 1,
         y: this.position.y + 1 + index,
       });
-    });
+    }
 
     this.printHeader();
   }
 
   private printHeader(): void {
-    const titleText = ' Errors ';
+    const titleText = " Errors ";
     this.printAt(this.stylizeText(titleText), {
       x: Math.floor((this.size.x + titleText.length / 2) / 2) - this.position.x,
       y: this.position.y,
     });
 
-    const rightText = ` ${this.errors} errors | Page ${this.actualPage + 1}/${
-      this.pages.length
-    } `;
+    const rightText = ` ${this.errors} errors | Page ${this.actualPage + 1}/${this.pages.length} `;
 
     this.printAt(this.stylizeText(rightText), {
       x: Math.floor(this.size.x + this.position.x - 4 - (rightText.length + 2)),
@@ -130,22 +133,22 @@ export class LogsUi extends BaseUi implements InteractiveUi {
 
   private stylizeText(
     text: string,
-    style: 'normal' | 'error' = 'normal',
+    style: "normal" | "error" = "normal",
   ): string {
-    const styles = { normal: 'white', error: 'red' };
+    const styles = { normal: "white", error: "red" };
     const color = styles[style];
-    return colors[color](colors['bgBlack'](text));
+    return ColorFn(color)(colors["bgBlack"](text));
   }
 
-  private chunkString(str: string, length: number): string[] {
-    const matches = str.match(new RegExp(`.{1,${length}}`, 'g'));
-    return matches !== null ? [...matches] : [];
+  private chunkString(string_: string, length: number): string[] {
+    const matches = string_.match(new RegExp(`.{1,${length}}`, "g"));
+    return matches === null ? [] : [...matches];
   }
 
-  private chunkArray(arr: string[], size: number): string[][] {
-    return arr.length > size
-      ? [arr.slice(0, size), ...this.chunkArray(arr.slice(size), size)]
-      : [arr];
+  private chunkArray(array: string[], size: number): string[][] {
+    return array.length > size
+      ? [array.slice(0, size), ...this.chunkArray(array.slice(size), size)]
+      : [array];
   }
 
   private calculatePosition(): void {

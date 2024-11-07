@@ -1,88 +1,88 @@
-import { ICliOptions } from '../interfaces/index.js';
-import colors from 'colors';
+import { ICliOptions } from "@/interfaces/cli-options.interface";
+import colors from "colors";
 
 export const OPTIONS: ICliOptions[] = [
   {
-    arg: ['-c', '--bg-color'],
+    arg: ["-c", "--bg-color"],
     description:
-      'Change row highlight color. Available colors are: blue, cyan, magenta, red, white and yellow. Default is blue.',
-    name: 'bg-color',
+      "Change row highlight color. Available colors are: blue, cyan, magenta, red, white and yellow. Default is blue.",
+    name: "bg-color",
   },
   {
-    arg: ['-d', '--directory'],
+    arg: ["-d", "--directory"],
     description:
-      'Set directory from which to start searching. By default, starting-point is .',
-    name: 'directory',
+      "Set directory from which to start searching. By default, starting-point is .",
+    name: "directory",
   },
   {
-    arg: ['-D', '--delete-all'],
-    description: 'Auto-delete all node_modules folders that are found.',
-    name: 'delete-all',
+    arg: ["-D", "--delete-all"],
+    description: "Auto-delete all node_modules folders that are found.",
+    name: "delete-all",
   },
   {
-    arg: ['-y'],
-    description: 'Avoid displaying a warning when executing --delete-all.',
-    name: 'yes',
+    arg: ["-y"],
+    description: "Avoid displaying a warning when executing --delete-all.",
+    name: "yes",
   },
   {
-    arg: ['-e', '--hide-errors'],
-    description: 'Hide errors if any.',
-    name: 'hide-errors',
+    arg: ["-e", "--hide-errors"],
+    description: "Hide errors if any.",
+    name: "hide-errors",
   },
   {
-    arg: ['-E', '--exclude'],
+    arg: ["-E", "--exclude"],
     description:
       'Exclude directories from search (directory list must be inside double quotes "", each directory separated by "," ) Example: "ignore1, ignore2"',
-    name: 'exclude',
+    name: "exclude",
   },
   {
-    arg: ['-f', '--full'],
+    arg: ["-f", "--full"],
     description:
       'Start searching from the home of the user (example: "/home/user" in linux).',
-    name: 'full-scan',
+    name: "full-scan",
   },
   {
-    arg: ['-gb'],
-    description: 'Show folder size in Gigabytes',
-    name: 'gb',
+    arg: ["-gb"],
+    description: "Show folder size in Gigabytes",
+    name: "gb",
   },
   {
-    arg: ['-h', '--help', '?'],
-    description: 'Show this help page, with all options.',
-    name: 'help',
+    arg: ["-h", "--help", "?"],
+    description: "Show this help page, with all options.",
+    name: "help",
   },
   {
-    arg: ['-nu', '--no-check-update'],
-    description: 'Dont check for updates on startup.',
-    name: 'no-check-updates',
+    arg: ["-nu", "--no-check-update"],
+    description: "Dont check for updates on startup.",
+    name: "no-check-updates",
   },
   {
-    arg: ['-s', '--sort'],
+    arg: ["-s", "--sort"],
     description:
-      'Sort results by: size, path or last-mod (last time the most recent file was modified in the workspace)',
-    name: 'sort-by',
+      "Sort results by: size, path or last-mod (last time the most recent file was modified in the workspace)",
+    name: "sort-by",
   },
   {
-    arg: ['-t', '--target'],
+    arg: ["-t", "--target"],
     description:
       "Specify the name of the directory you want to search for (by default, it's node_modules)",
-    name: 'target-folder',
+    name: "target-folder",
   },
   {
-    arg: ['-x', '--exclude-hidden-directories'],
+    arg: ["-x", "--exclude-hidden-directories"],
     description: 'Exclude hidden directories ("dot" directories) from search.',
-    name: 'exclude-hidden-directories',
+    name: "exclude-hidden-directories",
   },
   {
-    arg: ['--dry-run'],
+    arg: ["--dry-run"],
     description:
-      'It does not delete anything (will simulate it with a random delay).',
-    name: 'dry-run',
+      "It does not delete anything (will simulate it with a random delay).",
+    name: "dry-run",
   },
   {
-    arg: ['-v', '--version'],
-    description: 'Show version.',
-    name: 'version',
+    arg: ["-v", "--version"],
+    description: "Show version.",
+    name: "version",
   },
 ];
 
@@ -103,16 +103,16 @@ export const HELP_PROGRESSBAR = ` ------- PROGRESS BAR --------------------
     ┌ (green) Results ready (stats calculated).
     🭲     ┌ (white) Directories examined.
     🭲     🭲      ┌ (gray) Directories pending to be analyzed.
- ${colors.green('▀▀▀▀▀▀▀')}${colors.white('▀▀▀▀')}${colors.gray('▀▀▀▀▀▀▀▀▀▀▀')}
+ ${colors.green("▀▀▀▀▀▀▀")}${colors.white("▀▀▀▀")}${colors.gray("▀▀▀▀▀▀▀▀▀▀▀")}
 `;
 
 export const HELP_FOOTER =
-  'Not all node_modules are bad! Some applications (like vscode, Discord, etc) need those dependencies to work. If their directory is deleted, the application will probably break (until the dependencies are reinstalled). NPKILL will show you these directories by highlighting them ⚠️';
+  "Not all node_modules are bad! Some applications (like vscode, Discord, etc) need those dependencies to work. If their directory is deleted, the application will probably break (until the dependencies are reinstalled). NPKILL will show you these directories by highlighting them ⚠️";
 
 export const COLORS = {
-  cyan: 'bgCyan',
-  magenta: 'bgMagenta',
-  red: 'bgRed',
-  white: 'bgWhite',
-  yellow: 'bgYellow',
+  cyan: "bgCyan",
+  magenta: "bgMagenta",
+  red: "bgRed",
+  white: "bgWhite",
+  yellow: "bgYellow",
 };

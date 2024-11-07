@@ -1,6 +1,6 @@
-import { INodeVersion } from '../interfaces/index.js';
-import { NoParamCallback } from 'fs';
-import { version } from 'process';
+import { INodeVersion } from "@/interfaces/node-version.interface.js";
+import { NoParamCallback } from "node:fs";
+import { version } from "node:process";
 
 export abstract class WindowsStrategy {
   private next: WindowsStrategy;
@@ -14,6 +14,7 @@ export abstract class WindowsStrategy {
     const { major, minor } = this.getNodeVersion();
     this.major = major;
     this.minor = minor;
+    this.next = this;
   }
 
   setNextStrategy(next: WindowsStrategy): WindowsStrategy {
@@ -21,7 +22,7 @@ export abstract class WindowsStrategy {
     return next;
   }
 
-  protected checkNext(path: string, callback): boolean {
+  protected checkNext(path: string, callback: NoParamCallback): boolean {
     if (this.next === undefined) {
       return true;
     }
@@ -32,14 +33,14 @@ export abstract class WindowsStrategy {
     const releaseVersionsRegExp: RegExp = /^v(\d{1,2})\.(\d{1,2})\.(\d{1,2})/;
     const versionMatch = version.match(releaseVersionsRegExp);
 
-    if (versionMatch === null) {
+    if (versionMatch === null || versionMatch.length < 4) {
       throw new Error(`Unable to parse Node version: ${version}`);
     }
 
     return {
-      major: parseInt(versionMatch[1], 10),
-      minor: parseInt(versionMatch[2], 10),
-      patch: parseInt(versionMatch[3], 10),
+      major: Number.parseInt(versionMatch[1]!, 10),
+      minor: Number.parseInt(versionMatch[2]!, 10),
+      patch: Number.parseInt(versionMatch[3]!, 10),
     };
   }
 }

@@ -1,18 +1,19 @@
-import { IFolder } from '../src/interfaces/folder.interface.js';
-import { ResultsService } from '../src/services/results.service.js';
+import { describe, expect, it, beforeEach } from "vitest";
+import { ResultsService } from "@/services/results.service.js";
+import type { IFolder } from "@/interfaces/folder.interface";
 
-describe('Result Service', () => {
-  let resultService;
+describe("Result Service", () => {
+  let resultService: ResultsService;
   beforeEach(() => {
     resultService = new ResultsService();
   });
 
-  describe('#addResult', () => {
-    it('should add folder if that is the first', () => {
+  describe("#addResult", () => {
+    it("should add folder if that is the first", () => {
       const newResult: IFolder = {
-        path: 'path',
+        path: "path",
         size: 5,
-        status: 'live',
+        status: "live",
         modificationTime: 0,
         isDangerous: false,
       };
@@ -20,26 +21,26 @@ describe('Result Service', () => {
       resultService.addResult(newResult);
       expect(resultService.results).toMatchObject(resultExpected);
     });
-    it('should add folders', () => {
+    it("should add folders", () => {
       const newResults: IFolder[] = [
         {
-          path: 'path',
+          path: "path",
           size: 1,
-          status: 'live',
+          status: "live",
           modificationTime: 0,
           isDangerous: false,
         },
         {
-          path: 'path2',
+          path: "path2",
           size: 2,
-          status: 'deleted',
+          status: "deleted",
           modificationTime: 0,
           isDangerous: false,
         },
         {
-          path: 'path3',
+          path: "path3",
           size: 3,
-          status: 'live',
+          status: "live",
           modificationTime: 0,
           isDangerous: false,
         },
@@ -47,54 +48,54 @@ describe('Result Service', () => {
 
       const resultExpected = newResults;
 
-      newResults.forEach((result) => resultService.addResult(result));
+      for (const result of newResults) resultService.addResult(result);
       expect(resultService.results).toMatchObject(resultExpected);
     });
   });
 
-  describe('#sortResults', () => {
+  describe("#sortResults", () => {
     let mockResults: IFolder[];
     beforeEach(() => {
       mockResults = [
         {
-          path: 'pathd',
+          path: "pathd",
           size: 5,
-          status: 'live',
+          status: "live",
           modificationTime: 0,
           isDangerous: false,
         },
         {
-          path: 'patha',
+          path: "patha",
           size: 6,
-          status: 'live',
+          status: "live",
           modificationTime: 0,
           isDangerous: false,
         },
         {
-          path: 'pathc',
+          path: "pathc",
           size: 16,
-          status: 'live',
+          status: "live",
           modificationTime: 0,
           isDangerous: false,
         },
         {
-          path: 'pathcc',
+          path: "pathcc",
           size: 0,
-          status: 'deleted',
+          status: "deleted",
           modificationTime: 0,
           isDangerous: false,
         },
         {
-          path: 'pathb',
+          path: "pathb",
           size: 3,
-          status: 'deleted',
+          status: "deleted",
           modificationTime: 0,
           isDangerous: false,
         },
         {
-          path: 'pathz',
+          path: "pathz",
           size: 8,
-          status: 'live',
+          status: "live",
           modificationTime: 0,
           isDangerous: false,
         },
@@ -103,143 +104,143 @@ describe('Result Service', () => {
       resultService.results = [...mockResults];
     });
 
-    it('should sort by path', () => {
+    it("should sort by path", () => {
       const expectResult = [
         {
-          path: 'patha',
+          path: "patha",
           size: 6,
-          status: 'live',
+          status: "live",
           modificationTime: 0,
           isDangerous: false,
         },
         {
-          path: 'pathb',
+          path: "pathb",
           size: 3,
-          status: 'deleted',
+          status: "deleted",
           modificationTime: 0,
           isDangerous: false,
         },
         {
-          path: 'pathc',
+          path: "pathc",
           size: 16,
-          status: 'live',
+          status: "live",
           modificationTime: 0,
           isDangerous: false,
         },
         {
-          path: 'pathcc',
+          path: "pathcc",
           size: 0,
-          status: 'deleted',
+          status: "deleted",
           modificationTime: 0,
           isDangerous: false,
         },
         {
-          path: 'pathd',
+          path: "pathd",
           size: 5,
-          status: 'live',
+          status: "live",
           modificationTime: 0,
           isDangerous: false,
         },
         {
-          path: 'pathz',
+          path: "pathz",
           size: 8,
-          status: 'live',
+          status: "live",
           modificationTime: 0,
           isDangerous: false,
         },
       ];
 
-      resultService.sortResults('path');
+      resultService.sortResults("path");
       expect(resultService.results).toMatchObject(expectResult);
     });
-    it('should sort by size', () => {
+    it("should sort by size", () => {
       const expectResult = [
         {
-          path: 'pathc',
+          path: "pathc",
           size: 16,
-          status: 'live',
+          status: "live",
         },
         {
-          path: 'pathz',
+          path: "pathz",
           size: 8,
-          status: 'live',
+          status: "live",
         },
         {
-          path: 'patha',
+          path: "patha",
           size: 6,
-          status: 'live',
+          status: "live",
         },
         {
-          path: 'pathd',
+          path: "pathd",
           size: 5,
-          status: 'live',
+          status: "live",
         },
         {
-          path: 'pathb',
+          path: "pathb",
           size: 3,
-          status: 'deleted',
+          status: "deleted",
         },
         {
-          path: 'pathcc',
+          path: "pathcc",
           size: 0,
-          status: 'deleted',
+          status: "deleted",
         },
       ];
 
-      resultService.sortResults('size');
+      resultService.sortResults("size");
       expect(resultService.results).toMatchObject(expectResult);
     });
-    it('should not sort if method dont exist', () => {
+    it("should not sort if method dont exist", () => {
       const expectResult = mockResults;
 
-      resultService.sortResults('color');
+      resultService.sortResults("color");
       expect(resultService.results).toMatchObject(expectResult);
     });
   });
 
-  describe('#getStats', () => {
+  describe("#getStats", () => {
     let mockResults: IFolder[];
     beforeEach(() => {
       mockResults = [
         {
-          path: 'pathd',
+          path: "pathd",
           size: 5,
-          status: 'live',
+          status: "live",
           modificationTime: 0,
           isDangerous: false,
         },
         {
-          path: 'patha',
+          path: "patha",
           size: 6,
-          status: 'deleted',
+          status: "deleted",
           modificationTime: 0,
           isDangerous: false,
         },
         {
-          path: 'pathc',
+          path: "pathc",
           size: 16,
-          status: 'live',
+          status: "live",
           modificationTime: 0,
           isDangerous: false,
         },
         {
-          path: 'pathcc',
+          path: "pathcc",
           size: 0,
-          status: 'deleted',
+          status: "deleted",
           modificationTime: 0,
           isDangerous: false,
         },
         {
-          path: 'pathb',
+          path: "pathb",
           size: 3,
-          status: 'deleted',
+          status: "deleted",
           modificationTime: 0,
           isDangerous: false,
         },
         {
-          path: 'pathz',
+          path: "pathz",
           size: 8,
-          status: 'live',
+          status: "live",
           modificationTime: 0,
           isDangerous: false,
         },
@@ -248,10 +249,10 @@ describe('Result Service', () => {
       resultService.results = [...mockResults];
     });
 
-    it('should get stats of results', () => {
+    it("should get stats of results", () => {
       const expectResult = {
-        spaceReleased: '9.00 GB',
-        totalSpace: '38.00 GB',
+        spaceReleased: "9.00 GB",
+        totalSpace: "38.00 GB",
       };
 
       const stats = resultService.getStats();

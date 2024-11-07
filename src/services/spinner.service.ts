@@ -2,21 +2,21 @@ export class SpinnerService {
   private spinner: string[] = [];
   private count = -1;
 
-  setSpinner(spinner: string[]): void {
+  setSpinner(spinner: string[]) {
     this.spinner = spinner;
     this.reset();
   }
 
-  nextFrame(): string {
+  nextFrame() {
     this.updateCount();
-    return this.spinner[this.count];
+    return this.spinner[this.count] ?? "";
   }
 
-  reset(): void {
+  reset() {
     this.count = -1;
   }
 
-  private updateCount(): void {
+  private updateCount() {
     if (this.isLastFrame()) {
       this.count = 0;
     } else {
@@ -24,7 +24,7 @@ export class SpinnerService {
     }
   }
 
-  private isLastFrame(): boolean {
+  private isLastFrame() {
     return this.count === this.spinner.length - 1;
   }
 }

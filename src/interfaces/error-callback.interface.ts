@@ -1,3 +1,3 @@
 import ErrnoException = NodeJS.ErrnoException;
 
-export type IErrorCallback = (err?: ErrnoException) => void;
+export type IErrorCallback = (error?: ErrnoException) => void;

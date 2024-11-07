@@ -1,5 +1,5 @@
-import { IKeyPress } from 'src/interfaces';
-import ansiEscapes from 'ansi-escapes';
+import { IKeyPress } from "@/interfaces/key-press.interface.js";
+import ansiEscapes from "ansi-escapes";
 
 export interface Position {
   x: number;
@@ -12,52 +12,52 @@ export interface InteractiveUi {
 
 export abstract class BaseUi {
   public freezed = false;
-  protected _position: Position;
-  protected _visible = true;
+  private positionValue: Position = { x: 0, y: 0 };
+  protected visibleValue = true;
   private readonly stdout: NodeJS.WriteStream = process.stdout;
 
-  protected printAt(message: string, position: Position): void {
+  protected printAt(message: string, position: Position) {
     this.setCursorAt(position);
     this.print(message);
   }
 
-  protected setCursorAt({ x, y }: Position): void {
+  protected setCursorAt({ x, y }: Position) {
     this.print(ansiEscapes.cursorTo(x, y));
   }
 
-  protected print(text: string): void {
+  protected print(text: string) {
     if (this.freezed) {
       return;
     }
-    process.stdout.write.bind(process.stdout)(text);
+    this.stdout.write(text);
   }
 
-  protected clearLine(row: number): void {
+  protected clearLine(row: number) {
     this.printAt(ansiEscapes.eraseLine, { x: 0, y: row });
   }
 
-  setPosition(position: Position, renderOnSet = true): void {
-    this._position = position;
+  setPosition(position: Position, renderOnSet = true) {
+    this.positionValue = position;
 
     if (renderOnSet) {
       this.render();
     }
   }
 
-  setVisible(visible: boolean, renderOnSet = true): void {
-    this._visible = visible;
+  setVisible(visible: boolean, renderOnSet = true) {
+    this.visibleValue = visible;
 
     if (renderOnSet) {
       this.render();
     }
   }
 
-  get position(): Position {
-    return this._position;
+  get position() {
+    return this.positionValue;
   }
 
-  get visible(): boolean {
-    return this._visible;
+  get visible() {
+    return this.visibleValue;
   }
 
   get terminal(): { columns: number; rows: number } {

@@ -1,15 +1,14 @@
-import { NoParamCallback, lstat, readdir, rmdir, unlink } from 'fs';
-
-import { RECURSIVE_RMDIR_IGNORED_ERROR_CODES } from '../constants/index.js';
-import { WindowsStrategy } from './windows-strategy.abstract.js';
-import { join as pathJoin } from 'path';
+import { NoParamCallback, lstat, readdir, rmdir, unlink } from "node:fs";
+import { WindowsStrategy } from "@/strategies/windows-strategy.abstract.js";
+import nodePath from "node:path";
+import { RECURSIVE_RMDIR_IGNORED_ERROR_CODES } from "@/constants/recursive-rmdir-node-support.constants.js";
 
 export class WindowsDefaultStrategy extends WindowsStrategy {
   remove(dirOrFilePath: string, callback: NoParamCallback): boolean {
     lstat(dirOrFilePath, (lstatError, stats) => {
       //  No such file or directory - Done
-      if (lstatError !== null && lstatError.code === 'ENOENT') {
-        callback(null);
+      if (lstatError !== null && lstatError.code === "ENOENT") {
+        callback();
         return;
       }
 
@@ -20,12 +19,12 @@ export class WindowsDefaultStrategy extends WindowsStrategy {
 
       unlink(dirOrFilePath, (rmError) => {
         //  No such file or directory - Done
-        if (rmError !== null && rmError.code === 'ENOENT') {
-          callback(null);
+        if (rmError && rmError.code === "ENOENT") {
+          callback();
           return;
         }
 
-        if (rmError !== null && rmError.code === 'EISDIR') {
+        if (rmError && rmError.code === "EISDIR") {
           this.removeDirectory(dirOrFilePath, callback);
           return;
         }
@@ -36,11 +35,11 @@ export class WindowsDefaultStrategy extends WindowsStrategy {
     return true;
   }
 
-  isSupported(): boolean {
+  isSupported() {
     return true;
   }
 
-  private removeDirectory(path: string, callback): void {
+  private removeDirectory(path: string, callback: NoParamCallback) {
     rmdir(path, (rmDirError) => {
       //  We ignore certain error codes
       //  in order to simulate 'recursive' mode
@@ -56,7 +55,7 @@ export class WindowsDefaultStrategy extends WindowsStrategy {
     });
   }
 
-  private removeChildren(path: string, callback): void {
+  private removeChildren(path: string, callback: NoParamCallback) {
     readdir(path, (readdirError, ls) => {
       if (readdirError !== null) {
         return callback(readdirError);
@@ -72,8 +71,8 @@ export class WindowsDefaultStrategy extends WindowsStrategy {
         return;
       }
 
-      ls.forEach((dirOrFile) => {
-        const dirOrFilePath = pathJoin(path, dirOrFile);
+      for (const dirOrFile of ls) {
+        const dirOrFilePath = nodePath.join(path, dirOrFile);
 
         this.remove(dirOrFilePath, (error) => {
           if (done) {
@@ -92,7 +91,7 @@ export class WindowsDefaultStrategy extends WindowsStrategy {
             rmdir(path, callback);
           }
         });
-      });
+      }
     });
   }
 }

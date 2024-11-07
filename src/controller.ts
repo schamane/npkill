@@ -1,34 +1,15 @@
 import {
   ConsoleService,
-  FileService,
   ResultsService,
   SpinnerService,
   UpdateService,
-} from './services/index.js';
-import {
-  DEFAULT_CONFIG,
-  MIN_CLI_COLUMNS_SIZE,
-  UI_POSITIONS,
-} from './constants/index.js';
-import { ERROR_MSG, INFO_MSGS } from './constants/messages.constants.js';
-import {
-  IConfig,
-  IFolder,
-  IKeyPress,
-  IListDirParams,
-} from './interfaces/index.js';
-import { Observable, from } from 'rxjs';
-import {
-  catchError,
-  filter,
-  map,
-  mergeMap,
-  switchMap,
-  tap,
-} from 'rxjs/operators';
-
-import { COLORS } from './constants/cli.constants.js';
-import { FOLDER_SORT } from './constants/sort.result.js';
+} from "@/services/index.js";
+import { ERROR_MSG, INFO_MSGS } from "@/constants/messages.constants.js";
+import { IFolder } from "@/interfaces/folder.interface.js";
+import { IKeyPress } from "@/interfaces/key-press.interface.js";
+import { IListDirParams } from "@/interfaces/list-dir-params.interface.js";
+import { COLORS } from "@/constants/cli.constants.js";
+import { FOLDER_SORT } from "@/constants/sort.result.js";
 import {
   StatusUi,
   StatsUi,
@@ -39,33 +20,46 @@ import {
   HeaderUi,
   GeneralUi,
   WarningUi,
-} from './ui/index.js';
+} from "@/ui/index.js";
+import { LoggerService } from "@/services/logger.service.js";
+import { UiService } from "@/services/ui.service.js";
+import { SearchStatus } from "@/models/search-state.model.js";
+import _dirname from "@/dirname.js";
+import colors from "colors";
+import { homedir } from "node:os";
+import path from "node:path";
+import openExplorer from "open-file-explorer";
+import {
+  DEFAULT_CONFIG,
+  MIN_CLI_COLUMNS_SIZE,
+  UI_POSITIONS,
+} from "@/constants/main.constants.js";
+import { inspect } from "node:util";
+import { FileService } from "@/services/files/files.service.js";
+import { computed, effect } from "@preact/signals-core";
 
-import { LoggerService } from './services/logger.service.js';
-import { UiService } from './services/ui.service.js';
-import { SearchStatus } from './models/search-state.model.js';
-import _dirname from './dirname.js';
-import colors from 'colors';
-import { homedir } from 'os';
-import path from 'path';
-import openExplorer from 'open-file-explorer';
+const { stdin } = process;
 
 export class Controller {
-  private folderRoot = '';
-  private readonly stdout: NodeJS.WriteStream = process.stdout;
-  private readonly config: IConfig = DEFAULT_CONFIG;
+  private folderRoot = "";
+  private readonly stdout = process.stdout;
+  private readonly config = DEFAULT_CONFIG;
 
-  private searchStart: number;
-  private searchDuration: number;
+  private searchStart = Date.now();
+  private searchDuration = 0;
 
-  private uiHeader: HeaderUi;
-  private uiGeneral: GeneralUi;
-  private uiStats: StatsUi;
-  private uiStatus: StatusUi;
-  private uiResults: ResultsUi;
-  private uiLogs: LogsUi;
-  private uiWarning: WarningUi;
-  private activeComponent: InteractiveUi | null = null;
+  private uiHeader = new HeaderUi();
+  private uiGeneral = new GeneralUi();
+  private uiStats = new StatsUi(this.config, this.resultsService, this.logger);
+  private uiStatus = new StatusUi(this.spinnerService, this.searchStatus);
+  private uiResults = new ResultsUi(
+    this.resultsService,
+    this.consoleService,
+    this.fileService,
+  );
+  private uiLogs = new LogsUi(this.logger);
+  private uiWarning = new WarningUi();
+  private activeComponent: InteractiveUi | undefined = undefined;
 
   constructor(
     private readonly logger: LoggerService,
@@ -79,7 +73,7 @@ export class Controller {
   ) {}
 
   init(): void {
-    this.logger.info(process.argv.join(' '));
+    this.logger.info(process.argv.join(" "));
     this.logger.info(`Npkill started! v${this.getVersion()}`);
     this.initUi();
     if (this.consoleService.isRunningBuild()) {
@@ -97,16 +91,13 @@ export class Controller {
 
     if (this.config.deleteAll && !this.config.yes) {
       this.showDeleteAllWarning();
-      this.uiWarning.confirm$
-        .pipe(
-          tap(() => {
-            this.activeComponent = this.uiResults;
-            this.uiWarning.setDeleteAllWarningVisibility(false);
-            this.uiService.renderAll();
-            this.scan();
-          }),
-        )
-        .subscribe();
+      this.uiWarning.confirm$.subscribe(() => {
+        this.activeComponent = this.uiResults;
+        this.uiWarning.setDeleteAllWarningVisibility(false);
+        this.uiService.renderAll();
+        this.scan();
+      });
+
       return;
     }
 
@@ -139,10 +130,14 @@ export class Controller {
     this.uiService.add(this.uiWarning);
 
     // Set Events
-    this.uiResults.delete$.subscribe((folder) => this.deleteFolder(folder));
+    this.uiResults.delete$.subscribe((folder) => {
+      if (folder) this.deleteFolder(folder);
+    });
     this.uiResults.showErrors$.subscribe(() => this.showErrorPopup(true));
     this.uiLogs.close$.subscribe(() => this.showErrorPopup(false));
-    this.uiResults.openFolder$.subscribe((path) => openExplorer(path));
+    this.uiResults.openFolder$.subscribe((path) => {
+      if (path) openExplorer(path, () => {});
+    });
 
     // Activate the main interactive component
     this.activeComponent = this.uiResults;
@@ -150,30 +145,30 @@ export class Controller {
 
   private parseArguments(): void {
     const options = this.consoleService.getParameters(process.argv);
-    if (options.isTrue('help')) {
+    if (options.isTrue("help")) {
       this.showHelp();
       process.exit();
     }
-    if (options.isTrue('version')) {
+    if (options.isTrue("version")) {
       this.showProgramVersion();
       process.exit();
     }
-    if (options.isTrue('delete-all')) {
+    if (options.isTrue("delete-all")) {
       this.config.deleteAll = true;
     }
-    if (options.isTrue('sort-by')) {
-      if (!this.isValidSortParam(options.getString('sort-by'))) {
+    if (options.isTrue("sort-by")) {
+      if (!this.isValidSortParam(options.getString("sort-by"))) {
         this.invalidSortParam();
       }
-      this.config.sortBy = options.getString('sort-by');
+      this.config.sortBy = options.getString("sort-by");
     }
 
-    const exclude = options.getString('exclude');
+    const exclude = options.getString("exclude");
 
-    if (exclude !== undefined && exclude !== '') {
-      console.log('EXCLUDE', exclude);
+    if (exclude !== undefined && exclude !== "") {
+      console.log("EXCLUDE", exclude);
       const userExcludeList = this.consoleService
-        .splitData(this.consoleService.replaceString(exclude, '"', ''), ',')
+        .splitData(this.consoleService.replaceString(exclude, '"', ""), ",")
         .map((path) => path.trim())
         .filter(Boolean)
         .map(path.normalize);
@@ -182,42 +177,42 @@ export class Controller {
       this.config.exclude = [...this.config.exclude, ...userExcludeList];
     }
 
-    this.folderRoot = options.isTrue('directory')
-      ? options.getString('directory')
+    this.folderRoot = options.isTrue("directory")
+      ? options.getString("directory")
       : process.cwd();
-    if (options.isTrue('full-scan')) {
+    if (options.isTrue("full-scan")) {
       this.folderRoot = homedir();
     }
-    if (options.isTrue('hide-errors')) {
+    if (options.isTrue("hide-errors")) {
       this.config.showErrors = false;
     }
-    if (options.isTrue('gb')) {
+    if (options.isTrue("gb")) {
       this.config.folderSizeInGB = true;
     }
-    if (options.isTrue('no-check-updates')) {
+    if (options.isTrue("no-check-updates")) {
       this.config.checkUpdates = false;
     }
-    if (options.isTrue('target-folder')) {
-      this.config.targetFolder = options.getString('target-folder');
+    if (options.isTrue("target-folder")) {
+      this.config.targetFolder = options.getString("target-folder");
     }
-    if (options.isTrue('bg-color')) {
-      this.setColor(options.getString('bg-color'));
+    if (options.isTrue("bg-color")) {
+      this.setColor(options.getString("bg-color"));
     }
-    if (options.isTrue('exclude-hidden-directories')) {
+    if (options.isTrue("exclude-hidden-directories")) {
       this.config.excludeHiddenDirectories = true;
     }
 
-    if (options.isTrue('dry-run')) {
+    if (options.isTrue("dry-run")) {
       this.config.dryRun = true;
       this.uiHeader.isDryRun = true;
     }
 
-    if (options.isTrue('yes')) {
+    if (options.isTrue("yes")) {
       this.config.yes = true;
     }
 
     // Remove trailing slash from folderRoot for consistency
-    this.folderRoot = this.folderRoot.replace(/[/\\]$/, '');
+    this.folderRoot = this.folderRoot.replace(/[/\\]$/, "");
   }
 
   private showErrorPopup(visible: boolean): void {
@@ -247,17 +242,17 @@ export class Controller {
   }
 
   private showProgramVersion(): void {
-    this.uiService.print('v' + this.getVersion());
+    this.uiService.print("v" + this.getVersion());
   }
 
   private setColor(color: string): void {
     if (this.isValidColor(color)) {
-      this.config.backgroundColor = COLORS[color];
+      this.config.backgroundColor = COLORS[color as keyof typeof COLORS] ?? "";
     }
   }
 
-  private isValidColor(color: string): boolean {
-    return Object.keys(COLORS).some((validColor) => validColor === color);
+  private isValidColor(color: string) {
+    return color in COLORS;
   }
 
   private isValidSortParam(sortName: string): boolean {
@@ -265,7 +260,7 @@ export class Controller {
   }
 
   private getVersion(): string {
-    const packageJson = _dirname + '/../package.json';
+    const packageJson = path.join(_dirname, "..", "package.json");
 
     const packageData = JSON.parse(
       this.fileService.getFileContent(packageJson),
@@ -302,28 +297,31 @@ export class Controller {
   private checkFileRequirements(): void {
     try {
       this.fileService.isValidRootFolder(this.folderRoot);
-    } catch (error: any) {
-      this.uiService.print(error.message);
-      this.logger.error(error.message);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        this.uiService.print(error.message);
+        this.logger.error(error.message);
+      }
       this.exitWithError();
     }
   }
 
   private checkVersion(): void {
-    this.logger.info('Checking updates...');
+    this.logger.info("Checking updates...");
     this.updateService
       .isUpdated(this.getVersion())
       .then((isUpdated: boolean) => {
-        if (!isUpdated) {
-          this.showUpdateMessage();
-          this.logger.info('New version found!');
+        if (isUpdated) {
+          this.logger.info("Npkill is update");
         } else {
-          this.logger.info('Npkill is update');
+          this.showUpdateMessage();
+          this.logger.info("New version found!");
         }
+        return;
       })
-      .catch((err: Error) => {
+      .catch((error: Error) => {
         const errorMessage =
-          ERROR_MSG.CANT_GET_REMOTE_VERSION + ': ' + err.message;
+          ERROR_MSG.CANT_GET_REMOTE_VERSION + ": " + error.message;
         this.newError(errorMessage);
       });
   }
@@ -345,24 +343,24 @@ export class Controller {
     // Q: What is the type of the key?
     // Write the type of key
 
-    this.uiService.stdin.on('keypress', (_, key: IKeyPress) => {
-      if (key['name'] !== '') {
-        this.keyPress(key);
+    stdin.on("keypress", (_, key: IKeyPress) => {
+      if (key["name"] === "") {
+        throw new Error("Invalid key: " + inspect(key));
       } else {
-        throw new Error('Invalid key: ' + JSON.stringify(key));
+        this.keyPress(key);
       }
     });
 
-    this.stdout.on('resize', () => {
+    this.stdout.on("resize", () => {
       this.uiService.clear();
       this.uiService.renderAll();
     });
 
-    process.on('uncaughtException', (error: Error) => {
+    process.on("uncaughtException", (error: Error) => {
       this.newError(error.message);
     });
 
-    process.on('unhandledRejection', (error: Error) => {
+    process.on("unhandledRejection", (error: Error) => {
       this.newError(error.stack ?? error.message);
     });
   }
@@ -375,47 +373,95 @@ export class Controller {
     }
 
     if (this.activeComponent === null) {
-      this.logger.error('activeComponent is NULL in Controller.');
+      this.logger.error("activeComponent is NULL in Controller.");
       return;
     }
 
-    this.activeComponent.onKeyInput(key);
+    this.activeComponent?.onKeyInput(key);
   }
+
+  isExcludedDangerousDirectory = (path: string): boolean =>
+    this.config.excludeHiddenDirectories && this.fileService.isDangerous(path);
 
   private scan(): void {
     this.uiStatus.start();
-    const params: IListDirParams = this.prepareListDirParams();
-
-    const isExcludedDangerousDirectory = (path: string): boolean =>
-      this.config.excludeHiddenDirectories &&
-      this.fileService.isDangerous(path);
+    const parameters: IListDirParams = this.prepareListDirParams();
 
     this.searchStart = Date.now();
-    const folders$ = this.fileService.listDir(params);
+    const folders$ = this.fileService.listDir(parameters);
 
-    this.logger.info(`Scan started in ${params.path}`);
+    this.logger.info(`Scan started in ${parameters.path}`);
+
+    const newResult = computed(() =>
+      this.consoleService
+        .splitData(folders$.value)
+        .filter((path) => path !== ""),
+    );
+
+    /*
     const newResults$ = folders$.pipe(
       catchError((error, caught) => {
         this.newError(error.message);
         return caught;
       }),
       mergeMap((dataFolder) => from(this.consoleService.splitData(dataFolder))),
-      filter((path) => path !== ''),
+      filter((path) => path !== '')
     );
+    */
 
-    const excludedResults$ = newResults$.pipe(
-      filter((path) => isExcludedDangerousDirectory(path)),
-    );
+    //const excludedResults$ = newResults$.pipe(filter((path) => this.isExcludedDangerousDirectory(path)));
 
-    const nonExcludedResults$ = newResults$.pipe(
-      filter((path) => !isExcludedDangerousDirectory(path)),
-    );
+    // const nonExcludedResults$ = newResults$.pipe(filter((path) => !this.isExcludedDangerousDirectory(path)));
+    // const nonExcludedResults$ = newResults$.pipe(filter((path) => !this.isExcludedDangerousDirectory(path)));
 
+    // const nonExcludedResults$ = computed(() => newResult.value.filter((path) => !this.isExcludedDangerousDirectory(path)));
+    /*
     excludedResults$.subscribe(() => {
       // this.searchState.resultsFound++;
       // this.searchState.completedStatsCalculation++;
     });
+    */
 
+    effect(() => {
+      const list = newResult.value
+        .map((path) => ({
+          path,
+          size: 0,
+          modificationTime: -1,
+          isDangerous: this.fileService.isDangerous(path),
+          status: "live",
+        }))
+        .filter(({ isDangerous }) => !isDangerous);
+      for (const nodeFolder of list as IFolder[]) {
+        this.searchStatus.newResult();
+        this.resultsService.addResult(nodeFolder);
+        this.logger.info(`Folder found: ${nodeFolder.path}`);
+
+        if (this.config.sortBy === "path") {
+          this.resultsService.sortResults(this.config.sortBy);
+          this.uiResults.clear();
+        }
+        this.printFoldersSection();
+
+        // second pass
+        this.calculateFolderStats(nodeFolder);
+        // this.searchStatus.completeStatCalculation();
+
+        //this.printFoldersSection();
+
+        /*
+
+        .subscribe({
+          next: () => this.printFoldersSection(),
+          error: (error: string) => this.newError(error),
+          complete: () => this.completeSearch()
+        })
+          */
+        this.completeSearch();
+      }
+    });
+
+    /*
     nonExcludedResults$
       .pipe(
         map<string, IFolder>((path) => ({
@@ -423,7 +469,7 @@ export class Controller {
           size: 0,
           modificationTime: -1,
           isDangerous: this.fileService.isDangerous(path),
-          status: 'live',
+          status: 'live'
         })),
         tap((nodeFolder) => {
           this.searchStatus.newResult();
@@ -444,31 +490,64 @@ export class Controller {
           if (this.config.deleteAll) {
             this.deleteFolder(folder);
           }
-        }),
+        })
       )
       .subscribe({
         next: () => this.printFoldersSection(),
-        error: (error) => this.newError(error),
-        complete: () => this.completeSearch(),
+        error: (error: string) => this.newError(error),
+        complete: () => this.completeSearch()
       });
+      */
   }
 
-  private prepareListDirParams(): IListDirParams {
+  private prepareListDirParams() {
     const target = this.config.targetFolder;
-    const params = {
+    const parameters: IListDirParams = {
       path: this.folderRoot,
       target,
+      exclude: this.config.exclude,
     };
 
-    if (this.config.exclude.length > 0) {
-      params['exclude'] = this.config.exclude;
+    if (this.config.exclude.length <= 0) {
+      delete parameters.exclude;
     }
-
-    return params;
+    return parameters;
   }
 
-  private calculateFolderStats(nodeFolder: IFolder): Observable<IFolder> {
+  private calculateFolderStats(nodeFolder: IFolder) {
     this.logger.info(`Calculating stats for ${nodeFolder.path}`);
+    const folderSize = this.fileService.getFolderSize(nodeFolder.path);
+    folderSize.subscribe((size) => {
+      nodeFolder.size = this.fileService.convertKbToGB(+size);
+      this.logger.info(`Size of ${nodeFolder.path}: ${size}kb`);
+
+      this.finishFolderStats();
+    });
+
+    /*
+    return sub.pipe(
+      tap((size) => {
+        nodeFolder.size = this.fileService.convertKbToGB(+size);
+        this.logger.info(`Size of ${nodeFolder.path}: ${size}kb`);
+      }),
+      switchMap(async () => {
+        // Saves resources by not scanning a result that is probably not of interest
+        if (nodeFolder.isDangerous) {
+          nodeFolder.modificationTime = -1;
+          return nodeFolder;
+        }
+        const parentFolder = path.join(nodeFolder.path, '../');
+        const result = await this.fileService.getRecentModificationInDir(parentFolder);
+        nodeFolder.modificationTime = result;
+        this.logger.info(`Last mod. of ${nodeFolder.path}: ${result}`);
+        return nodeFolder;
+      }),
+      tap(() => {
+        this.finishFolderStats();
+      })
+    );
+    */
+    /*
     return this.fileService.getFolderSize(nodeFolder.path).pipe(
       tap((size) => {
         nodeFolder.size = this.fileService.convertKbToGB(+size);
@@ -481,21 +560,21 @@ export class Controller {
           return nodeFolder;
         }
         const parentFolder = path.join(nodeFolder.path, '../');
-        const result =
-          await this.fileService.getRecentModificationInDir(parentFolder);
+        const result = await this.fileService.getRecentModificationInDir(parentFolder);
         nodeFolder.modificationTime = result;
         this.logger.info(`Last mod. of ${nodeFolder.path}: ${result}`);
         return nodeFolder;
       }),
       tap(() => {
         this.finishFolderStats();
-      }),
+      })
     );
+    */
   }
 
   private finishFolderStats(): void {
     const needSort =
-      this.config.sortBy === 'size' || this.config.sortBy === 'last-mod';
+      this.config.sortBy === "size" || this.config.sortBy === "last-mod";
     if (needSort) {
       this.resultsService.sortResults(this.config.sortBy);
       this.uiResults.clear();
@@ -516,11 +595,11 @@ export class Controller {
   }
 
   private isQuitKey(ctrl: boolean, name: string): boolean {
-    return (ctrl && name === 'c') || name === 'q';
+    return (ctrl && name === "c") || name === "q";
   }
 
   private exitWithError(): void {
-    this.uiService.print('\n');
+    this.uiService.print("\n");
     this.uiService.setRawMode(false);
     this.uiService.setCursorVisible(true);
     const logPath = this.logger.getSuggestLogFilePath();
@@ -533,7 +612,7 @@ export class Controller {
     this.uiService.clear();
     this.uiService.setCursorVisible(true);
     this.printExitMessage();
-    this.logger.info('Thank for using npkill. Bye!');
+    this.logger.info("Thank for using npkill. Bye!");
     const logPath = this.logger.getSuggestLogFilePath();
     this.logger.saveToFile(logPath);
     process.exit();
@@ -545,7 +624,7 @@ export class Controller {
   }
 
   private deleteFolder(folder: IFolder): void {
-    if (folder.status === 'deleted' || folder.status === 'deleting') {
+    if (folder.status === "deleted" || folder.status === "deleting") {
       return;
     }
 
@@ -560,7 +639,7 @@ export class Controller {
     }
 
     this.logger.info(`Deleting ${folder.path}`);
-    folder.status = 'deleting';
+    folder.status = "deleting";
     this.searchStatus.pendingDeletions++;
     this.uiStatus.render();
     this.printFoldersSection();
@@ -572,19 +651,20 @@ export class Controller {
 
     deleteFunction(folder.path)
       .then(() => {
-        folder.status = 'deleted';
+        folder.status = "deleted";
         this.searchStatus.pendingDeletions--;
         this.uiStats.render();
         this.uiStatus.render();
         this.printFoldersSection();
         this.logger.info(`Deleted ${folder.path}`);
+        return;
       })
-      .catch((e) => {
-        folder.status = 'error-deleting';
+      .catch((error) => {
+        folder.status = "error-deleting";
         this.searchStatus.pendingDeletions--;
         this.uiStatus.render();
         this.printFoldersSection();
-        this.newError(e.message);
+        this.newError(error.message);
       });
   }
 

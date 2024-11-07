@@ -1,5 +1,6 @@
-import { IFolder, IStats } from '../interfaces/index.js';
-import { FOLDER_SORT } from '../constants/sort.result.js';
+import { IFolder } from "@/interfaces/folder.interface.js";
+import { IStats } from "@/interfaces/stats.interface.js";
+import { FOLDER_SORT } from "@/constants/sort.result.js";
 
 export class ResultsService {
   results: IFolder[] = [];
@@ -16,7 +17,7 @@ export class ResultsService {
     let spaceReleased = 0;
 
     const totalSpace = this.results.reduce((total, folder) => {
-      if (folder.status === 'deleted') {
+      if (folder.status === "deleted") {
         spaceReleased += folder.size;
       }
 

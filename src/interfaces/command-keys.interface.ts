@@ -13,5 +13,5 @@ export interface IKeysCommand {
   home: () => void;
   end: () => void;
   e: () => void;
-  execute: (command: string, params?: string[]) => number;
+  execute: (command: string, parameters?: string[]) => number;
 }

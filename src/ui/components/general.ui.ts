@@ -1,15 +1,13 @@
-// This class in only a intermediate for the refactor.
+import { BaseUi } from "@/ui/base.ui.js";
+import colors from "colors";
 
-import { BaseUi } from '../base.ui.js';
-import colors from 'colors';
+const gray = colors["gray"];
+const thanks = gray(
+  "Thanks for using npkill!\nLike it? Give us a star http://github.com/voidcosmos/npkill\n",
+);
 
 export class GeneralUi extends BaseUi {
-  render(): void {}
-
-  printExitMessage(stats: { spaceReleased: string }): void {
-    const { spaceReleased } = stats;
-    let exitMessage = `Space released: ${spaceReleased}\n`;
-    exitMessage += colors['gray']('Thanks for using npkill!\n Like it? Give us a star http://github.com/voidcosmos/npkill\n');
-    this.print(exitMessage);
-  }
+  override render() {}
+  printExitMessage = ({ spaceReleased }: { spaceReleased: string }) =>
+    this.print(`Space released: ${spaceReleased}\n${thanks}`);
 }

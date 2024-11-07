@@ -1,7 +1,6 @@
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
+import { fileURLToPath } from "node:url";
+import path from "node:path";
 
-const _filename = fileURLToPath(import.meta.url);
-const _dirname = dirname(_filename);
+const dirname = path.dirname(fileURLToPath(import.meta.url));
 
-export default _dirname;
+export default dirname;

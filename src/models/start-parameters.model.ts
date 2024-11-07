@@ -1,21 +1,27 @@
+const store = new Map<string, string | boolean>();
+
+// TODO: probably can be static
+// TODO: no need to wrap Map to extra class
+
 export class StartParameters {
-  private values: Record<string, string | boolean> = {};
-
   add(key: string, value: string | boolean): void {
-    this.values[key] = value;
+    store.set(key, value);
   }
 
-  isTrue(key: string): boolean {
-    const value = this.values[key];
-    return value !== undefined && (value === true || value !== 'false');
+  isTrue(key: string) {
+    return store.has(key);
   }
 
-  getString(key: string): string {
-    const value = this.values[key];
-    if (typeof value === 'boolean') {
+  getString(key: string) {
+    const value = store.get(key);
+    if (typeof value === "boolean") {
       return value.toString();
     }
 
-    return value;
+    return value ?? "";
+  }
+
+  reset() {
+    store.clear();
   }
 }

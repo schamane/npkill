@@ -1,36 +1,39 @@
-import * as https from 'node:https';
-
+import https from "node:https";
+import { Buffer } from "node:buffer";
+import { Url } from "node:url";
+import { IncomingMessage } from "node:http";
 export class HttpsService {
-  async getJson(url: string): Promise<Record<string, string>> {
+  async getJson<T>(url: string | Url): Promise<T> {
     return new Promise((resolve, reject) => {
-      const fail = (err: Error): void => {
-        reject(err);
-      };
+      const body: any[] = [];
 
-      const request = https.get(url, (res) => {
-        if (!this.isCorrectResponse(res.statusCode ?? -1)) {
-          const error = new Error(res.statusMessage ?? 'Unknown error');
-          fail(error);
-          return;
-        }
-
-        res.setEncoding('utf8');
-        let body = '';
-        res.on('data', (data: string) => {
-          body += data;
+      const req = https.get(url, (res) => {
+        res.on("data", (chunk) => {
+          body.push(Buffer.from(chunk));
         });
-        res.on('end', () => {
-          resolve(JSON.parse(body));
+        res.on("end", () => {
+          if (!this.isCorrectResponse(res)) {
+            reject(res.statusMessage ?? "Unknown error");
+            return;
+          }
+          let data = Buffer.concat(body).toString();
+          try {
+            data = JSON.parse(data);
+          } catch {
+            // nothing
+          } finally {
+            resolve(data as T);
+          }
         });
       });
 
-      request.on('error', (error) => fail(error));
+      req.on("error", reject);
+
+      req.end();
     });
   }
 
-  private isCorrectResponse(statusCode: number): boolean {
-    const correctRangeStart = 200;
-    const correctRangeEnd = 299;
-    return statusCode >= correctRangeStart && statusCode <= correctRangeEnd;
+  private isCorrectResponse({ statusCode = 500 }: IncomingMessage): boolean {
+    return statusCode >= 200 && statusCode <= 299;
   }
 }
